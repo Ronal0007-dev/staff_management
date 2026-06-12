@@ -1,0 +1,66 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Login — Staff Management System
+    link(rel="stylesheet" href="/css/style.css")
+    link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css")
+
+  body.auth-body
+    .auth-wrapper
+      .auth-card
+        .auth-header
+          .auth-logo
+            i.fas.fa-users-cog
+          h1 Staff Management System
+          p.auth-subtitle Sign in to your admin account
+
+        if errors && errors.length
+          .alert.alert-error
+            i.fas.fa-exclamation-circle
+            = errors[0]
+
+        form.auth-form(action="/auth/login" method="POST")
+          .form-group
+            label.form-label
+              i.fas.fa-user
+              | &nbsp; Username
+            input.form-input(
+              type="text"
+              name="username"
+              placeholder="Enter your username"
+              required
+              autocomplete="username"
+              autofocus
+            )
+
+          .form-group
+            label.form-label
+              i.fas.fa-lock
+              | &nbsp; Password
+            .input-password-wrap
+              input.form-input#loginPassword(
+                type="password"
+                name="password"
+                placeholder="Enter your password"
+                required
+                autocomplete="current-password"
+              )
+              button.toggle-pw(type="button" onclick="togglePw('loginPassword', this)" title="Show/hide password")
+                i.fas.fa-eye
+
+          button.btn.btn-primary.btn-block(type="submit")
+            i.fas.fa-sign-in-alt
+            | &nbsp; Sign In
+
+        .auth-footer
+          p School Staff Management System &mdash; Admin Panel
+
+  script.
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      const isText = inp.type === 'text';
+      inp.type = isText ? 'password' : 'text';
+      btn.querySelector('i').className = isText ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }

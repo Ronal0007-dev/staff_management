@@ -1,0 +1,43 @@
+extends ../layout
+include ../partials/user-form
+
+block title
+  | Edit User
+
+block content
+  .form-page
+    .form-page-header
+      h2
+        i.fas.fa-user-edit
+        | &nbsp; Edit User
+      p.form-subtitle
+        | Editing: &nbsp;
+        strong= user.fullName
+        | &nbsp;&middot;&nbsp;
+        code= user.username
+
+    //- Quick Role Assignment Panel
+    .role-assign-panel
+      .role-assign-header
+        i.fas.fa-user-tag
+        h3 Quick Role Assignment
+      .role-assign-body
+        p Current role:&nbsp;
+          span(class=`role-badge role-${user.role}`)
+            = user.role === 'super_admin' ? 'Super Admin' : 'HR Manager'
+        .role-assign-actions
+          if user.role !== 'super_admin'
+            form(action=`/users/${user.id}/assign-role` method="POST" style="display:inline")
+              input(type="hidden" name="role" value="super_admin")
+              button.btn.btn-sm.btn-primary(type="submit" onclick="return confirm('Promote to Super Admin? This grants full system access.')")
+                i.fas.fa-crown
+                | &nbsp; Promote to Super Admin
+          if user.role !== 'hr_manager'
+            form(action=`/users/${user.id}/assign-role` method="POST" style="display:inline")
+              input(type="hidden" name="role" value="hr_manager")
+              button.btn.btn-sm.btn-secondary(type="submit" onclick="return confirm('Demote to HR Manager? Permissions will be reset to HR Manager defaults.')")
+                i.fas.fa-user-tie
+                | &nbsp; Demote to HR Manager
+
+    form(action=`/users/${user.id}/edit` method="POST")
+      +userForm(user, roles, allPermissions, defaultPermissions, true)

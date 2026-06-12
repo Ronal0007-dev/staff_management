@@ -1,0 +1,225 @@
+extends ../layout
+
+block title
+  | Staff List
+
+block content
+  //- ── Expiring contracts banner ─────────────────────────────
+  if expiringContracts && expiringContracts.length
+    .expiry-banner
+      .expiry-banner-header
+        i.fas.fa-exclamation-triangle
+        h3 Contract Expiry Alert
+        span.expiry-count= expiringContracts.length + ' contract(s) expiring within 3 months'
+      .expiry-list
+        each ec in expiringContracts
+          .expiry-item
+            .expiry-name
+              i.fas.fa-user-clock
+              strong= ec.title + ' ' + ec.firstName + ' ' + ec.lastName
+            .expiry-meta
+              span.expiry-dept= ec.department ? ec.department.name : ''
+              span.expiry-no= ec.staffNumber
+            .expiry-date
+              - const daysLeft = Math.ceil((new Date(ec.contractEndDate) - new Date()) / (1000*60*60*24))
+              span(class=daysLeft <= 30 ? 'expiry-days expiry-critical' : 'expiry-days expiry-warn')
+                i.fas.fa-calendar-times
+                | &nbsp; Expires: #{moment(ec.contractEndDate).format('DD MMM YYYY')}
+                |  &nbsp;(#{daysLeft} days)
+            a.btn-icon.btn-edit(href=`/staff/${ec.id}/edit` title="Edit")
+              i.fas.fa-edit
+
+  .staff-header
+    .staff-header-left
+      h2 #{showDeleted ? 'Archived Staff' : 'All Staff Members'}
+      span.badge= staff.length + ' records'
+    .staff-header-right
+      a.btn.btn-primary(href="/staff/new")
+        i.fas.fa-user-plus
+        | &nbsp; Add New Staff
+      a.btn.btn-secondary(href="/staff/print/list" target="_blank")
+        i.fas.fa-print
+        | &nbsp; Print List
+
+  .filter-bar
+    form.filter-form(action="/staff" method="GET")
+      .filter-group
+        input.form-input(type="text" name="search" placeholder="Search by name or staff no..." value=search)
+      .filter-group
+        select.form-input(name="dept")
+          option(value="") All Departments
+          each dept in departments
+            option(value=dept.slug selected=selectedDept===dept.slug)= dept.name
+      .filter-group
+        label.toggle-label
+          input(type="checkbox" name="deleted" value="true" checked=showDeleted onchange="this.form.submit()")
+          span Show Archived
+      .filter-group
+        button.btn.btn-primary(type="submit")
+          i.fas.fa-search
+          | &nbsp; Filter
+        if search || selectedDept || showDeleted
+          a.btn.btn-outline(href="/staff") Clear
+
+  if staff.length === 0
+    .empty-state
+      i.fas.fa-user-slash
+      p No staff members found.
+      a.btn.btn-primary(href="/staff/new") Add First Staff Member
+  else
+    .table-wrapper
+      table.staff-table
+        thead
+          tr
+            th #
+            th Staff No.
+            th Name
+            th Sub-Dept / Unit
+            th Employment
+            th Education
+            th Status
+            th Actions
+        tbody
+          each member, i in staff
+            tr(class=member.deletedAt ? 'row-deleted' : '')
+              td= i + 1
+              td
+                span.staff-no= member.staffNumber || '—'
+              td
+                .staff-name
+                  span.title-badge= member.title
+                  | &nbsp;
+                  strong= member.firstName + ' ' + (member.middleName ? member.middleName[0] + '. ' : '') + member.lastName
+              td
+                if member.subDepartment
+                  span.subdept-text= member.subDepartment.name
+                  if member.unit
+                    span.unit-text  / #{member.unit.name}
+                else
+                  | —
+              td
+                span(class='emp-type emp-' + member.employmentType.toLowerCase())= member.employmentType
+                if member.employmentType === 'Fixed' && member.employmentLength
+                  span.emp-length  (#{member.employmentLength} mo)
+              td= member.educationLevel
+              td
+                if member.deletedAt
+                  span.status-badge.status-archived Archived
+                else
+                  span.status-badge.status-active Active
+              td
+                .action-buttons
+                  if !member.deletedAt
+                    button.btn-icon.btn-view(onclick=`openViewModal(${member.id})` title="View")
+                      i.fas.fa-eye
+                    a.btn-icon.btn-edit(href=`/staff/${member.id}/edit` title="Edit")
+                      i.fas.fa-edit
+                    a.btn-icon.btn-print(href=`/staff/${member.id}/print` target="_blank" title="Print")
+                      i.fas.fa-print
+                    form(action=`/staff/${member.id}/delete` method="POST" style="display:inline" onsubmit="return confirmDelete(event)")
+                      button.btn-icon.btn-delete(type="submit" title="Archive")
+                        i.fas.fa-archive
+                  else
+                    form(action=`/staff/${member.id}/restore` method="POST" style="display:inline")
+                      button.btn-icon.btn-restore(type="submit" title="Restore")
+                        i.fas.fa-undo
+
+  //- View Modal
+  #viewModal.modal-overlay(style="display:none")
+    .modal-box
+      .modal-header
+        h3#modalTitle Staff Details
+        button.modal-close(onclick="closeViewModal()")
+          i.fas.fa-times
+      .modal-body#modalBody
+        .modal-loading
+          i.fas.fa-spinner.fa-spin
+          | &nbsp; Loading...
+      .modal-footer
+        button.btn.btn-outline(onclick="closeViewModal()") Close
+        a#modalPrintBtn.btn.btn-primary(href="#" target="_blank")
+          i.fas.fa-print
+          | &nbsp; Print
+
+block scripts
+  script.
+    function openViewModal(id) {
+      const modal = document.getElementById('viewModal');
+      const body  = document.getElementById('modalBody');
+      modal.style.display = 'flex';
+      body.innerHTML = '<div class="modal-loading"><i class="fas fa-spinner fa-spin"></i>&nbsp; Loading...</div>';
+
+      fetch('/staff/' + id + '/view')
+        .then(r => r.json())
+        .then(data => {
+          if (data.error) {
+            body.innerHTML = '<p style="color:red;padding:20px">Error: ' + data.error + '</p>';
+            return;
+          }
+          document.getElementById('modalTitle').textContent =
+            data.title + ' ' + data.firstName + ' ' + (data.middleName || '') + ' ' + data.lastName;
+          document.getElementById('modalPrintBtn').href = '/staff/' + id + '/print';
+          body.innerHTML = buildModalContent(data);
+        })
+        .catch(err => {
+          body.innerHTML = '<p style="color:red;padding:20px">Failed to load staff details.</p>';
+        });
+    }
+
+    function closeViewModal() {
+      document.getElementById('viewModal').style.display = 'none';
+    }
+
+    function buildModalContent(d) {
+      const fmt = (v) => (v !== null && v !== undefined && v !== '') ? v : '<span class="na">N/A</span>';
+      const fmtDate = (v) => {
+        if (!v) return '<span class="na">N/A</span>';
+        const dt = new Date(v);
+        return isNaN(dt) ? v : dt.toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+      };
+      const empType = (d.employmentType || '').toLowerCase();
+      return `
+        <div class="modal-grid">
+          <div class="modal-section">
+            <h4>Personal Information</h4>
+            <div class="info-row"><span class="label">Staff No</span><span class="value"><code class="badge-staff">${fmt(d.staffNumber)}</code></span></div>
+            <div class="info-row"><span class="label">Title</span><span class="value">${fmt(d.title)}</span></div>
+            <div class="info-row"><span class="label">First Name</span><span class="value">${fmt(d.firstName)}</span></div>
+            <div class="info-row"><span class="label">Middle Name</span><span class="value">${fmt(d.middleName)}</span></div>
+            <div class="info-row"><span class="label">Last Name</span><span class="value">${fmt(d.lastName)}</span></div>
+            <div class="info-row"><span class="label">Date of Birth</span><span class="value">${fmtDate(d.dateOfBirth)}</span></div>
+            <div class="info-row"><span class="label">Nationality</span><span class="value">${fmt(d.nationality)}</span></div>
+          </div>
+          <div class="modal-section">
+            <h4>Employment Information</h4>
+            <div class="info-row"><span class="label">Date of Employment</span><span class="value">${fmtDate(d.dateOfEmployment)}</span></div>
+            <div class="info-row"><span class="label">Employment Type</span><span class="value"><span class="emp-type emp-${empType}">${fmt(d.employmentType)}</span></span></div>
+            ${d.employmentType === 'Fixed' && d.employmentLength ? `
+              <div class="info-row"><span class="label">Contract Length</span><span class="value">${d.employmentLength} months</span></div>
+              <div class="info-row"><span class="label">Contract Start</span><span class="value">${fmtDate(d.contractStartDate)}</span></div>
+              <div class="info-row"><span class="label">Contract End</span><span class="value">
+                ${d.contractEndDate ? (() => {
+                  const daysLeft = Math.ceil((new Date(d.contractEndDate) - new Date()) / (1000*60*60*24));
+                  const cls = daysLeft < 0 ? 'modal-contract-expired' : daysLeft <= 90 ? 'modal-contract-warn' : 'modal-contract-ok';
+                  const label = daysLeft < 0 ? ' (Expired)' : daysLeft <= 90 ? ' (' + daysLeft + ' days left)' : ' (' + Math.floor(daysLeft/30) + ' mo left)';
+                  return '<span class="' + cls + '">' + fmtDate(d.contractEndDate) + label + '</span>';
+                })() : '<span class="na">N/A</span>'}
+              </span></div>` : ''}
+            <div class="info-row"><span class="label">Education Level</span><span class="value">${fmt(d.educationLevel)}</span></div>
+            <div class="info-row"><span class="label">Department</span><span class="value">${d.department ? d.department.name : '<span class="na">N/A</span>'}</span></div>
+            <div class="info-row"><span class="label">Sub-Department</span><span class="value">${d.subDepartment ? d.subDepartment.name : '<span class="na">N/A</span>'}</span></div>
+            <div class="info-row"><span class="label">Unit</span><span class="value">${d.unit ? d.unit.name : '<span class="na">N/A</span>'}</span></div>
+          </div>
+        </div>`;
+    }
+
+    function confirmDelete(e) {
+      if (!confirm('Archive this staff member? They can be restored later.')) {
+        e.preventDefault(); return false;
+      }
+      return true;
+    }
+
+    document.getElementById('viewModal').addEventListener('click', function(e) {
+      if (e.target === this) closeViewModal();
+    });

@@ -1,0 +1,227 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    title Staff Profile - #{staff.title} #{staff.firstName} #{staff.lastName}
+    style.
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: 'Segoe UI', Arial, sans-serif; color:#1a1a2e; background:#fff; }
+      .print-container { max-width:800px; margin:0 auto; padding:30px; }
+
+      /* Header */
+      .print-header { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:3px solid #1e3a5f; padding-bottom:18px; margin-bottom:24px; }
+      .school-info h1 { font-size:22px; color:#1e3a5f; font-weight:700; }
+      .school-info p  { font-size:12px; color:#666; margin-top:3px; }
+      .profile-stamp  { text-align:right; }
+      .staff-no { font-size:13px; font-weight:600; color:#1e3a5f; background:#eef2ff; padding:4px 12px; border-radius:20px; display:inline-block; }
+
+      /* Section titles */
+      h2.section-title { font-size:13px; font-weight:700; color:#1e3a5f; background:#f0f4f8; padding:8px 12px; border-left:4px solid #1e3a5f; margin-bottom:12px; margin-top:24px; text-transform:uppercase; letter-spacing:0.5px; }
+
+      /* Info grid */
+      .info-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px 30px; }
+      .info-row  { display:flex; flex-direction:column; padding:5px 0; border-bottom:1px solid #f0f0f0; }
+      .label     { font-size:10px; font-weight:600; text-transform:uppercase; color:#888; letter-spacing:0.5px; }
+      .value     { font-size:13px; color:#222; margin-top:2px; }
+
+      /* Employment badges */
+      .emp-badge     { display:inline-block; padding:2px 10px; border-radius:12px; font-size:11px; font-weight:600; }
+      .emp-fixed     { background:#fff3cd; color:#856404; }
+      .emp-permanent { background:#d1e7dd; color:#0a3622; }
+      .emp-temporary { background:#f8d7da; color:#842029; }
+
+      /* Contract expiry alert box */
+      .contract-alert { margin-top:20px; border-radius:8px; overflow:hidden; border:1.5px solid; }
+      .contract-alert.alert-ok       { border-color:#a7f3d0; }
+      .contract-alert.alert-warn     { border-color:#fde68a; }
+      .contract-alert.alert-critical { border-color:#fca5a5; }
+      .contract-alert.alert-expired  { border-color:#fca5a5; }
+
+      .alert-header { display:flex; align-items:center; gap:10px; padding:9px 14px; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; }
+      .alert-ok       .alert-header { background:#d1fae5; color:#065f46; }
+      .alert-warn     .alert-header { background:#fef3c7; color:#92400e; }
+      .alert-critical .alert-header { background:#fee2e2; color:#7f1d1d; }
+      .alert-expired  .alert-header { background:#fee2e2; color:#7f1d1d; }
+
+      .alert-body { padding:10px 14px; font-size:12px; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+      .alert-ok       .alert-body { background:#f0fdf4; }
+      .alert-warn     .alert-body { background:#fffbeb; }
+      .alert-critical .alert-body { background:#fff1f2; }
+      .alert-expired  .alert-body { background:#fff1f2; }
+
+      .alert-stat { display:flex; flex-direction:column; gap:2px; }
+      .alert-stat .stat-label { font-size:9px; font-weight:600; text-transform:uppercase; color:#888; letter-spacing:0.5px; }
+      .alert-stat .stat-value { font-size:13px; font-weight:700; color:#1a1a2e; }
+      .alert-stat .stat-note  { font-size:10px; color:#666; }
+
+      /* Signature block */
+      .sig-block { margin-top:40px; display:flex; justify-content:space-between; }
+      .sig-line   { text-align:center; min-width:180px; }
+      .sig-line .line { border-top:1px solid #333; margin-bottom:6px; }
+      .sig-line p { font-size:11px; color:#555; }
+
+      /* Footer */
+      .print-footer { margin-top:30px; border-top:1px solid #ddd; padding-top:14px; display:flex; justify-content:space-between; font-size:11px; color:#888; }
+
+      @media print { body { -webkit-print-color-adjust:exact; } .no-print { display:none; } }
+
+  - const today = new Date(); today.setHours(0,0,0,0)
+  - const isFixed = staff.employmentType === 'Fixed'
+  - const endDate = isFixed && staff.contractEndDate ? new Date(staff.contractEndDate) : null
+  - const daysLeft = endDate ? Math.ceil((endDate - today) / (1000*60*60*24)) : null
+  - const monthsLeft = daysLeft !== null ? Math.floor(Math.abs(daysLeft) / 30) : null
+  - let alertClass = 'alert-ok', alertIcon = '✔', alertTitle = 'Contract Active'
+  - if (daysLeft !== null) { if (daysLeft < 0) { alertClass='alert-expired'; alertIcon='✘'; alertTitle='Contract Expired' } else if (daysLeft <= 30) { alertClass='alert-critical'; alertIcon='⚠'; alertTitle='URGENT — Expiring Soon' } else if (daysLeft <= 90) { alertClass='alert-warn'; alertIcon='⚠'; alertTitle='Contract Expiring in 3 Months' } }
+
+  body
+    .print-container
+
+      //- ── Page header ──────────────────────────────────────────
+      .print-header
+        .school-info
+          h1 Staff Profile Record
+          p Generated: #{new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'})}
+        .profile-stamp
+          .staff-no= staff.staffNumber || 'NO-NUMBER'
+
+      //- ── Personal Information ─────────────────────────────────
+      h2.section-title Personal Information
+      .info-grid
+        .info-row
+          span.label Title
+          span.value= staff.title
+        .info-row
+          span.label First Name
+          span.value= staff.firstName
+        .info-row
+          span.label Middle Name
+          span.value= staff.middleName || '—'
+        .info-row
+          span.label Last Name
+          span.value= staff.lastName
+        .info-row
+          span.label Date of Birth
+          span.value= moment(staff.dateOfBirth).format('DD MMMM YYYY')
+        .info-row
+          span.label Nationality
+          span.value= staff.nationality
+
+      //- ── Employment Information ───────────────────────────────
+      h2.section-title Employment Information
+      .info-grid
+        .info-row
+          span.label Date of Employment
+          span.value= moment(staff.dateOfEmployment).format('DD MMMM YYYY')
+        .info-row
+          span.label Employment Type
+          span.value
+            span(class=`emp-badge emp-${staff.employmentType.toLowerCase()}`)= staff.employmentType
+        if isFixed && staff.employmentLength
+          .info-row
+            span.label Contract Length
+            span.value= staff.employmentLength + ' months'
+        .info-row
+          span.label Education Level
+          span.value= staff.educationLevel
+        .info-row
+          span.label Department
+          span.value= staff.department ? staff.department.name : '—'
+        .info-row
+          span.label Sub-Department
+          span.value= staff.subDepartment ? staff.subDepartment.name : '—'
+        .info-row
+          span.label Unit
+          span.value= staff.unit ? staff.unit.name : '—'
+
+      //- ── Contract Details (Fixed only) ────────────────────────
+      if isFixed
+        h2.section-title Contract Details
+
+        .info-grid
+          .info-row
+            span.label Contract Start Date
+            span.value
+              if staff.contractStartDate
+                = moment(staff.contractStartDate).format('DD MMMM YYYY')
+              else
+                | —
+          .info-row
+            span.label Contract End Date
+            span.value
+              if staff.contractEndDate
+                = moment(staff.contractEndDate).format('DD MMMM YYYY')
+              else
+                | —
+          if staff.employmentLength
+            .info-row
+              span.label Duration
+              span.value= staff.employmentLength + ' months'
+          if daysLeft !== null
+            .info-row
+              span.label Status
+              span.value
+                if daysLeft < 0
+                  | Expired #{Math.abs(daysLeft)} day(s) ago
+                else
+                  | #{daysLeft} day(s) remaining
+
+        //- Contract expiry alert box
+        if daysLeft !== null
+          .contract-alert(class=alertClass)
+            .alert-header
+              | #{alertIcon}&nbsp;&nbsp;#{alertTitle}
+            .alert-body
+              .alert-stat
+                span.stat-label Start Date
+                span.stat-value
+                  if staff.contractStartDate
+                    = moment(staff.contractStartDate).format('DD MMM YYYY')
+                  else
+                    | N/A
+              .alert-stat
+                span.stat-label End Date
+                span.stat-value
+                  if staff.contractEndDate
+                    = moment(staff.contractEndDate).format('DD MMM YYYY')
+                  else
+                    | N/A
+                if daysLeft < 0
+                  span.stat-note Expired
+                else if daysLeft <= 90
+                  span.stat-note= daysLeft + ' days remaining'
+                else
+                  span.stat-note= monthsLeft + ' months remaining'
+              .alert-stat
+                span.stat-label Action Required
+                if daysLeft < 0
+                  span.stat-value(style="color:#dc2626") Renew / Terminate
+                  span.stat-note Contract has lapsed
+                else if daysLeft <= 30
+                  span.stat-value(style="color:#dc2626") Immediate Action
+                  span.stat-note= 'Expires in ' + daysLeft + ' days'
+                else if daysLeft <= 90
+                  span.stat-value(style="color:#d97706") Review Required
+                  span.stat-note= 'Expires in ~' + monthsLeft + ' month(s)'
+                else
+                  span.stat-value(style="color:#059669") No Action
+                  span.stat-note Contract is active
+
+      //- ── Signature block ──────────────────────────────────────
+      .sig-block
+        .sig-line
+          .line &nbsp;
+          p Staff Signature
+        .sig-line
+          .line &nbsp;
+          p HR Officer Signature
+        .sig-line
+          .line &nbsp;
+          p Principal Signature
+
+      .print-footer
+        p Staff Management System — Confidential
+        p Printed on: #{new Date().toLocaleDateString('en-GB')}
+
+    .no-print(style="text-align:center;padding:20px;font-family:sans-serif")
+      button(onclick="window.print()" style="padding:10px 24px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px") Print / Save as PDF
+      a(href="/staff" style="margin-left:12px;padding:10px 24px;border:1px solid #ccc;border-radius:6px;color:#333;text-decoration:none;font-size:14px") Back

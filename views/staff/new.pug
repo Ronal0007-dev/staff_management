@@ -1,0 +1,16 @@
+extends ../layout
+include ../partials/staff-form
+
+block title
+  | Add New Staff
+
+block content
+  .form-page
+    .form-page-header
+      h2
+        i.fas.fa-user-plus
+        | &nbsp; Add New Staff Member
+      p.form-subtitle Fill in all required fields to register a new staff member.
+
+    form(action="/staff" method="POST")
+      +staffForm(null, departments, nationalities, false)

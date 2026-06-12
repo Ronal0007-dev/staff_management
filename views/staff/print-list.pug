@@ -1,0 +1,121 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    title Staff List - Print
+    style.
+      * { margin:0; padding:0; box-sizing:border-box; }
+      body { font-family: 'Segoe UI', Arial, sans-serif; font-size:10px; color:#1a1a2e; background:#fff; }
+      .print-container { padding:20px 24px; }
+
+      .print-header { display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #1e3a5f; padding-bottom:14px; margin-bottom:18px; }
+      .school-info h1 { font-size:18px; font-weight:700; color:#1e3a5f; }
+      .school-info p  { font-size:11px; color:#666; }
+      .print-meta     { text-align:right; font-size:11px; color:#555; }
+
+      h2.report-title { font-size:12px; font-weight:700; color:#1e3a5f; background:#eef2ff; padding:6px 12px; border-left:4px solid #1e3a5f; margin-bottom:14px; }
+
+      table { width:100%; border-collapse:collapse; }
+      thead tr { background:#1e3a5f; color:#fff; }
+      thead th { padding:7px 5px; text-align:left; font-size:9px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; white-space:nowrap; }
+      tbody tr:nth-child(even) { background:#f7f9fc; }
+      td { padding:5px 5px; border-bottom:1px solid #eee; vertical-align:middle; line-height:1.4; }
+
+      .emp-badge { display:inline-block; padding:1px 6px; border-radius:8px; font-size:9px; font-weight:600; }
+      .emp-fixed     { background:#fff3cd; color:#856404; }
+      .emp-permanent { background:#d1e7dd; color:#0a3622; }
+      .emp-temporary { background:#f8d7da; color:#842029; }
+
+      .contract-end-ok       { color:#065f46; font-weight:600; }
+      .contract-end-warn     { color:#92400e; font-weight:600; }
+      .contract-end-critical { color:#7f1d1d; font-weight:600; }
+      .contract-end-expired  { color:#7f1d1d; font-weight:600; font-style:italic; }
+
+      .expiry-flag { display:inline-block; background:#fee2e2; color:#7f1d1d; border-radius:6px; padding:1px 5px; font-size:8px; font-weight:700; margin-left:3px; }
+      .warn-flag   { display:inline-block; background:#fef3c7; color:#92400e; border-radius:6px; padding:1px 5px; font-size:8px; font-weight:700; margin-left:3px; }
+
+      .total-row td { font-weight:700; background:#f0f4f8; font-size:10px; }
+      .print-footer { margin-top:16px; border-top:1px solid #ddd; padding-top:10px; display:flex; justify-content:space-between; font-size:10px; color:#888; }
+      .na { color:#bbb; font-style:italic; }
+
+      @media print {
+        body { -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+        .no-print { display:none; }
+        @page { size: A3 landscape; margin: 12mm; }
+      }
+
+  body
+    .print-container
+      .print-header
+        .school-info
+          h1 Staff Management System
+          p Official Staff Records
+        .print-meta
+          p Date: #{new Date().toLocaleDateString('en-GB', {day:'2-digit', month:'long', year:'numeric'})}
+          p Total Records: #{staff.length}
+
+      h2.report-title= selectedDept ? 'Staff List — ' + selectedDept.name : 'Complete Staff List — All Departments'
+
+      table
+        thead
+          tr
+            th # 
+            th Staff No.
+            th Title
+            th Full Name
+            th Sub-Dept / Unit
+            th Employment
+            th Education
+            th Date Employed
+            th Contract Start
+            th Contract End
+            th Nationality
+        tbody
+          each member, i in staff
+            - const isFixed = member.employmentType === 'Fixed'
+            - const today = new Date(); today.setHours(0,0,0,0)
+            - const endDate = isFixed && member.contractEndDate ? new Date(member.contractEndDate) : null
+            - const daysLeft = endDate ? Math.ceil((endDate - today) / (1000*60*60*24)) : null
+            tr
+              td= i + 1
+              td= member.staffNumber || '—'
+              td= member.title
+              td= member.firstName + ' ' + (member.middleName ? member.middleName[0]+'. ' : '') + member.lastName
+              td= (member.subDepartment ? member.subDepartment.name : '—') + (member.unit ? ' / ' + member.unit.name : '')
+              td
+                span(class=`emp-badge emp-${(member.employmentType||'').toLowerCase()}`)= member.employmentType
+                if isFixed && member.employmentLength
+                  |  (#{member.employmentLength}mo)
+              td= member.educationLevel
+              td= moment(member.dateOfEmployment).format('DD/MM/YYYY')
+              td
+                if isFixed && member.contractStartDate
+                  = moment(member.contractStartDate).format('DD/MM/YYYY')
+                else
+                  span.na —
+              td
+                if isFixed && member.contractEndDate
+                  - let endClass = 'contract-end-ok'
+                  - let flag = ''
+                  - if (daysLeft < 0) { endClass = 'contract-end-expired'; flag = 'EXPIRED' }
+                  - else if (daysLeft <= 30) { endClass = 'contract-end-critical'; flag = '!' + daysLeft + 'd' }
+                  - else if (daysLeft <= 90) { endClass = 'contract-end-warn'; flag = daysLeft + 'd' }
+                  span(class=endClass)= moment(member.contractEndDate).format('DD/MM/YYYY')
+                  if flag && daysLeft < 0
+                    span.expiry-flag= flag
+                  else if flag
+                    span.warn-flag= flag
+                else
+                  span.na —
+              td= member.nationality
+
+          tr.total-row
+            td(colspan="11") Total Staff: #{staff.length}
+
+      .print-footer
+        p Staff Management System — Confidential
+        p Printed by: Administrator on #{new Date().toLocaleDateString('en-GB')}
+
+    .no-print(style="text-align:center;padding:20px;font-family:sans-serif")
+      button(onclick="window.print()" style="padding:10px 24px;background:#1e3a5f;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px") Print / Save as PDF
+      a(href="/staff" style="margin-left:12px;padding:10px 24px;border:1px solid #ccc;border-radius:6px;color:#333;text-decoration:none;font-size:14px") Back to Staff List

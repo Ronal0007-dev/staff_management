@@ -1,0 +1,94 @@
+extends ../layout
+
+block title
+  | User Management
+
+block content
+  .staff-header
+    .staff-header-left
+      h2
+        i.fas.fa-user-shield
+        | &nbsp; User Management
+      span.badge= users.length + ' users'
+    .staff-header-right
+      a.btn.btn-primary(href="/users/new")
+        i.fas.fa-user-plus
+        | &nbsp; Create New User
+
+  .table-wrapper
+    table.staff-table
+      thead
+        tr
+          th #
+          th Full Name
+          th Username
+          th Email
+          th Role
+          th Status
+          th Last Login
+          th Created By
+          th Actions
+      tbody
+        each user, i in users
+          tr(class=!user.isActive ? 'row-deleted' : '')
+            td= i + 1
+            td
+              .user-name-cell
+                .user-avatar-sm= user.fullName.charAt(0).toUpperCase()
+                div
+                  strong= user.fullName
+                  if user.id === currentUserId
+                    span.self-badge You
+            td
+              code= user.username
+            td= user.email
+            td
+              span(class=`role-badge role-${user.role}`)
+                if user.role === 'super_admin'
+                  i.fas.fa-crown
+                else
+                  i.fas.fa-user-tie
+                | &nbsp;
+                = user.role === 'super_admin' ? 'Super Admin' : 'HR Manager'
+            td
+              if user.isActive
+                span.status-badge.status-active Active
+              else
+                span.status-badge.status-archived Inactive
+            td
+              if user.lastLogin
+                span.date-text= new Date(user.lastLogin).toLocaleDateString('en-GB', {day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})
+              else
+                span.na Never
+            td
+              if user.creator
+                small= user.creator.fullName
+              else
+                span.na System
+            td
+              .action-buttons
+                if user.id !== currentUserId
+                  //- Edit
+                  a.btn-icon.btn-edit(href=`/users/${user.id}/edit` title="Edit user")
+                    i.fas.fa-edit
+
+                  //- Toggle active
+                  form(action=`/users/${user.id}/toggle-active` method="POST" style="display:inline")
+                    button.btn-icon(class=user.isActive ? 'btn-delete' : 'btn-restore' type="submit"
+                      title=user.isActive ? 'Deactivate' : 'Activate'
+                      onclick="return confirm('" + (user.isActive ? 'Deactivate' : 'Activate') + " this user?')")
+                      i(class=`fas fa-${user.isActive ? 'user-slash' : 'user-check'}`)
+
+                  //- Reset password
+                  form(action=`/users/${user.id}/reset-password` method="POST" style="display:inline")
+                    button.btn-icon.btn-view(type="submit" title="Reset Password"
+                      onclick="return confirm('Reset password for this user? A temporary password will be generated.')")
+                      i.fas.fa-key
+
+                  //- Delete
+                  form(action=`/users/${user.id}/delete` method="POST" style="display:inline")
+                    button.btn-icon.btn-delete(type="submit" title="Delete user"
+                      onclick="return confirm('Permanently delete this user? This cannot be undone.')")
+                      i.fas.fa-trash
+                else
+                  span.na-action Cannot edit self here

@@ -1,0 +1,90 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Staff Management System
+    link(rel="stylesheet" href="/css/style.css")
+    link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css")
+  body
+    nav.sidebar
+      .sidebar-brand
+        .brand-icon
+          i.fas.fa-users-cog
+        .brand-text
+          span.brand-title Staff Manager
+          span.brand-sub Admin Panel
+
+      ul.nav-links
+        li
+          a(href="/staff" class=currentPath.startsWith('/staff') ? 'active' : '')
+            i.fas.fa-users
+            span Staff List
+        if sessionUser && sessionUser.permissions.includes('staff.create')
+          li
+            a(href="/staff/new" class=currentPath === '/staff/new' ? 'active' : '')
+              i.fas.fa-user-plus
+              span Add Staff
+        if sessionUser && sessionUser.permissions.includes('department.view')
+          li
+            a(href="/departments" class=currentPath.startsWith('/departments') ? 'active' : '')
+              i.fas.fa-building
+              span Departments
+        if sessionUser && sessionUser.permissions.includes('staff.print')
+          li
+            a(href="/staff/print/list" target="_blank")
+              i.fas.fa-print
+              span Print Staff List
+        if sessionUser && sessionUser.role === 'super_admin'
+          li.nav-divider
+          li
+            a(href="/users" class=currentPath.startsWith('/users') ? 'active' : '')
+              i.fas.fa-user-shield
+              span User Management
+
+      .sidebar-user
+        if sessionUser
+          .user-avatar= sessionUser.fullName.charAt(0).toUpperCase()
+          .user-info
+            span.user-name= sessionUser.fullName
+            span.user-role= sessionUser.role === 'super_admin' ? 'Super Admin' : 'HR Manager'
+      .sidebar-footer
+        p School Staff Management System
+        p &copy; 2024
+
+    .main-content
+      .topbar
+        .topbar-left
+          h1.page-title
+            block title
+              | Dashboard
+        .topbar-right
+          if sessionUser
+            a.topbar-link(href="/auth/change-password" title="Change Password")
+              i.fas.fa-key
+            .admin-info.admin-dropdown
+              i.fas.fa-user-circle
+              span= sessionUser.fullName
+              .dropdown-menu
+                a.dropdown-item(href="/auth/change-password")
+                  i.fas.fa-key
+                  | Change Password
+                form(action="/auth/logout" method="POST" style="margin:0")
+                  button.dropdown-item.dropdown-logout(type="submit")
+                    i.fas.fa-sign-out-alt
+                    | Sign Out
+
+      .content-area
+        if success && success.length
+          .alert.alert-success
+            i.fas.fa-check-circle
+            = success[0]
+        if error && error.length
+          .alert.alert-error
+            i.fas.fa-exclamation-circle
+            = error[0]
+
+        block content
+
+    script(src="/js/main.js")
+    block scripts

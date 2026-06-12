@@ -1,0 +1,16 @@
+extends ../layout
+include ../partials/user-form
+
+block title
+  | Create User
+
+block content
+  .form-page
+    .form-page-header
+      h2
+        i.fas.fa-user-plus
+        | &nbsp; Create New User
+      p.form-subtitle Create a new system user. They will be required to change their password on first login.
+
+    form(action="/users" method="POST")
+      +userForm(null, roles, allPermissions, defaultPermissions, false)

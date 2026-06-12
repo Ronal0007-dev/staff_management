@@ -1,0 +1,165 @@
+mixin userForm(user, roles, allPermissions, defaultPermissions, isEdit)
+  - const permGroups = {}
+  - allPermissions.forEach(p => { if (!permGroups[p.group]) permGroups[p.group] = []; permGroups[p.group].push(p); })
+  - const userPerms = isEdit ? (user.permissions || []) : []
+
+  if errors && errors.length
+    .alert.alert-error
+      i.fas.fa-exclamation-circle
+      ul.error-list
+        each err in errors
+          li= err
+
+  .form-grid
+    .form-section
+      .section-header
+        i.fas.fa-id-card
+        h3 Account Information
+
+      .form-row
+        .form-group
+          label.form-label Full Name *
+          input.form-input(type="text" name="fullName" required
+            value=(isEdit ? user.fullName : (old && old.fullName || '')))
+
+        .form-group
+          label.form-label Username *
+          input.form-input(type="text" name="username" required
+            value=(isEdit ? user.username : (old && old.username || ''))
+            placeholder="Lowercase, no spaces")
+
+        .form-group
+          label.form-label Email *
+          input.form-input(type="email" name="email" required
+            value=(isEdit ? user.email : (old && old.email || '')))
+
+      if !isEdit
+        .form-row
+          .form-group
+            label.form-label Password *
+            .input-password-wrap
+              input.form-input#uf_pw(type="password" name="password" required minlength="8"
+                placeholder="Min 8 characters" oninput="checkStrength(this)")
+              button.toggle-pw(type="button" onclick="togglePw('uf_pw',this)")
+                i.fas.fa-eye
+            .pw-strength#pwStrength(style="display:none")
+              .pw-bar#pwBar
+              span#pwLabel
+
+          .form-group
+            label.form-label Confirm Password *
+            .input-password-wrap
+              input.form-input#uf_pw2(type="password" name="confirmPassword" required minlength="8" placeholder="Repeat password")
+              button.toggle-pw(type="button" onclick="togglePw('uf_pw2',this)")
+                i.fas.fa-eye
+
+    .form-section
+      .section-header
+        i.fas.fa-user-shield
+        h3 Role & Status
+
+      .form-row
+        .form-group
+          label.form-label Role *
+          select.form-input(name="role" required id="roleSelect" onchange="applyDefaultPerms(this)")
+            each r in roles
+              option(value=r selected=(isEdit ? user.role===r : (old && old.role===r)))
+                = r === 'super_admin' ? 'Super Admin' : 'HR Manager'
+
+        if isEdit
+          .form-group
+            label.form-label Account Status
+            select.form-input(name="isActive")
+              option(value="true" selected=user.isActive) Active
+              option(value="false" selected=!user.isActive) Inactive
+
+      .role-hint
+        .role-card#hint_super_admin(style=(isEdit ? user.role==='super_admin' : (!old || !old.role || old.role==='super_admin')) ? '' : 'display:none')
+          i.fas.fa-crown
+          div
+            strong Super Admin — Full Access
+            p Can manage all staff, departments, and system users. Can assign/revoke roles.
+        .role-card#hint_hr_manager(style=(isEdit ? user.role==='hr_manager' : (old && old.role==='hr_manager')) ? '' : 'display:none')
+          i.fas.fa-user-tie
+          div
+            strong HR Manager — Limited Access
+            p Can view, add, edit and print staff. Cannot manage users or delete departments.
+
+    .form-section
+      .section-header
+        i.fas.fa-key
+        h3 Permissions
+        .section-header-action
+          button.btn.btn-xs.btn-outline(type="button" onclick="selectAllPerms()") Select All
+          button.btn.btn-xs.btn-outline(type="button" onclick="clearAllPerms()") Clear All
+
+      .perms-grid
+        each group, groupName in permGroups
+          .perm-group
+            .perm-group-title= groupName
+            each perm in group
+              label.perm-item
+                input.perm-check(
+                  type="checkbox"
+                  name="permissions"
+                  value=perm.key
+                  checked=(isEdit ? userPerms.includes(perm.key) : (old && old.permissions ? (Array.isArray(old.permissions) ? old.permissions.includes(perm.key) : old.permissions === perm.key) : defaultPermissions[old && old.role || 'hr_manager'].includes(perm.key)))
+                )
+                .perm-label
+                  span= perm.label
+                  code.perm-key= perm.key
+
+  .form-actions
+    a.btn.btn-outline(href="/users") Cancel
+    button.btn.btn-primary(type="submit")
+      i.fas.fa-save
+      | &nbsp;
+      = isEdit ? 'Update User' : 'Create User'
+
+  script.
+    const defaultPerms = !{JSON.stringify(defaultPermissions)};
+
+    function togglePw(id, btn) {
+      const inp = document.getElementById(id);
+      const isText = inp.type === 'text';
+      inp.type = isText ? 'password' : 'text';
+      btn.querySelector('i').className = isText ? 'fas fa-eye' : 'fas fa-eye-slash';
+    }
+
+    function checkStrength(inp) {
+      const val = inp.value;
+      const bar = document.getElementById('pwBar');
+      const lbl = document.getElementById('pwLabel');
+      const wrap = document.getElementById('pwStrength');
+      wrap.style.display = val.length ? 'block' : 'none';
+      let score = 0;
+      if (val.length >= 8) score++;
+      if (/[A-Z]/.test(val)) score++;
+      if (/[0-9]/.test(val)) score++;
+      if (/[^A-Za-z0-9]/.test(val)) score++;
+      const levels = ['Weak','Fair','Good','Strong'];
+      const colors = ['#dc2626','#d97706','#2563eb','#059669'];
+      bar.style.width = (score * 25) + '%';
+      bar.style.background = colors[score-1] || '#dc2626';
+      lbl.textContent = levels[score-1] || 'Very Weak';
+      lbl.style.color = colors[score-1] || '#dc2626';
+    }
+
+    function applyDefaultPerms(sel) {
+      const role = sel.value;
+      const perms = defaultPerms[role] || [];
+      document.querySelectorAll('.perm-check').forEach(cb => {
+        cb.checked = perms.includes(cb.value);
+      });
+      document.querySelectorAll('.role-card').forEach(c => c.style.display = 'none');
+      const hint = document.getElementById('hint_' + role);
+      if (hint) hint.style.display = '';
+    }
+
+    function selectAllPerms() {
+      document.querySelectorAll('.perm-check').forEach(cb => cb.checked = true);
+    }
+
+    function clearAllPerms() {
+      document.querySelectorAll('.perm-check').forEach(cb => cb.checked = false);
+    }

@@ -1,0 +1,17 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    title Error #{code} — Staff Management
+    link(rel="stylesheet" href="/css/style.css")
+    link(rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css")
+  body.auth-body
+    .auth-wrapper
+      .auth-card
+        .auth-header
+          .auth-logo.auth-logo-error
+            i.fas.fa-exclamation-triangle
+          h1 Error #{code}
+          p.auth-subtitle= message
+        .auth-footer
+          a.btn.btn-outline(href="/") Go Home
