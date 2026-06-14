@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { Staff, Department, SubDepartment, Unit } = require('../models');
+const { Staff, Department, SubDepartment, Unit, Location } = require('../models');
 const { Op } = require('sequelize');
 const nationalities = require('../config/nationalities');
 const moment = require('moment');
@@ -22,14 +22,15 @@ function calcContractEndDate(startDate, months) {
 
 // List all staff
 router.get('/', async (req, res) => {
-  const { search, dept, deleted } = req.query;
+  const { search, dept, location, deleted } = req.query;
   const where = {};
   if (deleted === 'true') where.deletedAt = { [require('sequelize').Op.ne]: null };
 
   const include = [
-    { model: Department, as: 'department' },
+    { model: Location,      as: 'location' },
+    { model: Department,    as: 'department' },
     { model: SubDepartment, as: 'subDepartment' },
-    { model: Unit, as: 'unit' }
+    { model: Unit,          as: 'unit' }
   ];
 
   let staff = await Staff.findAll({
@@ -50,8 +51,15 @@ router.get('/', async (req, res) => {
   if (dept) {
     staff = staff.filter(m => m.department && m.department.slug === dept);
   }
+  if (location) {
+    const locId = parseInt(location, 10);
+    if (!Number.isNaN(locId)) {
+      staff = staff.filter(m => m.location && m.location.id === locId);
+    }
+  }
 
   const departments = await Department.findAll({ order: [['name', 'ASC']] });
+  const locations = await Location.findAll({ where: { isActive: true }, order: [['name', 'ASC']] });
 
   // Find fixed-contract staff expiring within 3 months
   const today     = new Date();
@@ -70,8 +78,10 @@ router.get('/', async (req, res) => {
   res.render('staff/index', {
     staff,
     departments,
+    locations,
     search: search || '',
     selectedDept: dept || '',
+    selectedLocation: location || '',
     showDeleted: deleted === 'true',
     expiringContracts,
     moment
@@ -80,11 +90,12 @@ router.get('/', async (req, res) => {
 
 // New staff form
 router.get('/new', async (req, res) => {
+  const locations = await Location.findAll({ where: { isActive: true }, order: [['name','ASC']] });
   const departments = await Department.findAll({
     include: [{ model: SubDepartment, as: 'subDepartments', include: [{ model: Unit, as: 'units' }] }],
     order: [['name', 'ASC']]
   });
-  res.render('staff/new', { departments, nationalities, errors: [], old: {} });
+  res.render('staff/new', { locations, departments, nationalities, errors: [], old: {} });
 });
 
 // Create staff
@@ -93,6 +104,7 @@ router.post('/', async (req, res) => {
     include: [{ model: SubDepartment, as: 'subDepartments', include: [{ model: Unit, as: 'units' }] }],
     order: [['name', 'ASC']]
   });
+  const locations = await Location.findAll({ where: { isActive: true }, order: [['name','ASC']] });
   try {
     const data = req.body;
     const staffNumber = await generateStaffNumber();
@@ -115,13 +127,14 @@ router.post('/', async (req, res) => {
       departmentId: parseInt(data.departmentId),
       subDepartmentId: data.subDepartmentId ? parseInt(data.subDepartmentId) : null,
       unitId: data.unitId ? parseInt(data.unitId) : null,
+      locationId: data.locationId ? parseInt(data.locationId) : null,
       staffNumber
     });
     req.flash('success', 'Staff member added successfully.');
     res.redirect('/staff');
   } catch (err) {
     console.error(err);
-    res.render('staff/new', { departments, nationalities, errors: [err.message], old: req.body });
+    res.render('staff/new', { locations, departments, nationalities, errors: [err.message], old: req.body });
   }
 });
 
@@ -129,17 +142,19 @@ router.post('/', async (req, res) => {
 router.get('/:id/edit', async (req, res) => {
   const staff = await Staff.findByPk(req.params.id);
   if (!staff) return res.redirect('/staff');
+  const locations = await Location.findAll({ where: { isActive: true }, order: [['name','ASC']] });
   const departments = await Department.findAll({
     include: [{ model: SubDepartment, as: 'subDepartments', include: [{ model: Unit, as: 'units' }] }],
     order: [['name', 'ASC']]
   });
-  res.render('staff/edit', { staff, departments, nationalities, errors: [], moment });
+  res.render('staff/edit', { staff, locations, departments, nationalities, errors: [], moment });
 });
 
 // Update
 router.post('/:id', async (req, res) => {
   const staff = await Staff.findByPk(req.params.id);
   if (!staff) return res.redirect('/staff');
+  const locations2 = await Location.findAll({ where: { isActive: true }, order: [['name','ASC']] });
   const departments = await Department.findAll({
     include: [{ model: SubDepartment, as: 'subDepartments', include: [{ model: Unit, as: 'units' }] }],
     order: [['name', 'ASC']]
@@ -164,13 +179,14 @@ router.post('/:id', async (req, res) => {
       nationality: data.nationality,
       departmentId: parseInt(data.departmentId),
       subDepartmentId: data.subDepartmentId ? parseInt(data.subDepartmentId) : null,
-      unitId: data.unitId ? parseInt(data.unitId) : null
+      unitId: data.unitId ? parseInt(data.unitId) : null,
+      locationId: data.locationId ? parseInt(data.locationId) : null
     });
     req.flash('success', 'Staff member updated successfully.');
     res.redirect('/staff');
   } catch (err) {
     console.error(err);
-    res.render('staff/edit', { staff, departments, nationalities, errors: [err.message], moment });
+    res.render('staff/edit', { staff, locations: locations2, departments, nationalities, errors: [err.message], moment });
   }
 });
 
@@ -194,6 +210,7 @@ router.post('/:id/restore', async (req, res) => {
 router.get('/:id/view', async (req, res) => {
   const staff = await Staff.findByPk(req.params.id, {
     include: [
+      { model: Location, as: 'location' },
       { model: Department, as: 'department' },
       { model: SubDepartment, as: 'subDepartment' },
       { model: Unit, as: 'unit' }
@@ -216,6 +233,7 @@ router.get('/:id/view', async (req, res) => {
     contractStartDate:  staff.contractStartDate,
     contractEndDate:    staff.contractEndDate,
     educationLevel:     staff.educationLevel,
+    location:      staff.location      ? { id: staff.location.id, name: staff.location.name } : null,
     department:    staff.department    ? { name: staff.department.name }    : null,
     subDepartment: staff.subDepartment ? { name: staff.subDepartment.name } : null,
     unit:          staff.unit          ? { name: staff.unit.name }          : null,
@@ -226,6 +244,7 @@ router.get('/:id/view', async (req, res) => {
 router.get('/:id/print', async (req, res) => {
   const staff = await Staff.findByPk(req.params.id, {
     include: [
+      { model: Location, as: 'location' },
       { model: Department, as: 'department' },
       { model: SubDepartment, as: 'subDepartment' },
       { model: Unit, as: 'unit' }
@@ -237,19 +256,49 @@ router.get('/:id/print', async (req, res) => {
 
 // Print list
 router.get('/print/list', async (req, res) => {
-  const { dept } = req.query;
+  const { dept, location, search, deleted } = req.query;
+  const where = {};
+  if (deleted === 'true') where.deletedAt = { [Op.ne]: null };
+
   let staff = await Staff.findAll({
+    where,
     include: [
+      { model: Location, as: 'location' },
       { model: Department, as: 'department' },
       { model: SubDepartment, as: 'subDepartment' },
       { model: Unit, as: 'unit' }
     ],
+    paranoid: deleted !== 'true',
     order: [['lastName', 'ASC']]
   });
+
+  if (search) {
+    const s = search.toLowerCase();
+    staff = staff.filter(m =>
+      m.firstName.toLowerCase().includes(s) ||
+      m.lastName.toLowerCase().includes(s) ||
+      (m.staffNumber && m.staffNumber.toLowerCase().includes(s))
+    );
+  }
   if (dept) staff = staff.filter(m => m.department && m.department.slug === dept);
+  if (location) {
+    const locId = parseInt(location, 10);
+    if (!Number.isNaN(locId)) staff = staff.filter(m => m.location && m.location.id === locId);
+  }
+
   const departments = await Department.findAll();
+  const locations = await Location.findAll({ where: { isActive: true }, order: [['name', 'ASC']] });
   const selectedDept = dept ? departments.find(d => d.slug === dept) : null;
-  res.render('staff/print-list', { staff, selectedDept, moment });
+  const selectedLocation = location ? locations.find(l => l.id === parseInt(location, 10)) : null;
+
+  res.render('staff/print-list', {
+    staff,
+    selectedDept,
+    selectedLocation,
+    search: search || '',
+    showDeleted: deleted === 'true',
+    moment
+  });
 });
 
 module.exports = router;

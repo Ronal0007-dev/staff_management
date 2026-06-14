@@ -1094,3 +1094,146 @@ body {
 .modal-contract-ok      { color: #065f46; font-weight: 600; }
 .modal-contract-warn    { color: #92400e; font-weight: 600; }
 .modal-contract-expired { color: #7f1d1d; font-weight: 600; }
+
+/* ===== LOCATIONS ===== */
+.loc-header { margin-bottom:22px; }
+.loc-header h2 { font-size:20px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:10px; }
+.loc-header h2 i { color:var(--accent); }
+.loc-header .subtitle { font-size:12px; color:var(--gray-400); margin-top:4px; }
+
+.loc-layout { display:flex; flex-direction:column; gap:18px; }
+
+.loc-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:16px; }
+
+.loc-card {
+  background:var(--white);
+  border:1px solid var(--gray-200);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+  transition:box-shadow .2s;
+}
+.loc-card:hover { box-shadow:var(--shadow); }
+
+.loc-card-header {
+  display:flex; align-items:flex-start; justify-content:space-between;
+  padding:16px 16px 12px;
+  background:linear-gradient(135deg,var(--navy),var(--navy-light));
+  color:#fff;
+}
+.loc-title { display:flex; align-items:flex-start; gap:12px; flex:1; }
+.loc-icon {
+  width:38px; height:38px; background:rgba(255,255,255,.15);
+  border-radius:8px; display:flex; align-items:center; justify-content:center;
+  font-size:16px; flex-shrink:0;
+}
+.loc-info h3 { font-size:14px; font-weight:700; color:#fff; }
+.loc-address { font-size:11px; color:rgba(255,255,255,.6); margin-top:3px; display:flex; align-items:center; gap:4px; }
+.loc-badge-wrap { flex-shrink:0; }
+.loc-status { font-size:10px; font-weight:600; padding:2px 8px; border-radius:10px; }
+
+.loc-card-stats {
+  display:flex; gap:0;
+  border-bottom:1px solid var(--gray-200);
+}
+.loc-stat {
+  flex:1; display:flex; flex-direction:column; align-items:center;
+  padding:10px 8px;
+  border-right:1px solid var(--gray-200);
+}
+.loc-stat:last-child { border-right:none; }
+.stat-num { font-size:22px; font-weight:700; color:var(--navy); line-height:1; }
+.stat-label { font-size:10px; color:var(--gray-400); margin-top:3px; text-transform:uppercase; letter-spacing:.4px; }
+
+.loc-card-actions {
+  display:flex; gap:6px; padding:12px 14px;
+  flex-wrap:wrap;
+  border-bottom:1px solid var(--gray-100);
+}
+
+.btn-delete-outline {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 10px; font-size:11px; font-weight:600;
+  background:transparent; border:1.5px solid var(--red);
+  color:var(--red); border-radius:var(--radius-sm); cursor:pointer;
+  transition:all .2s;
+}
+.btn-delete-outline:hover { background:var(--red); color:#fff; }
+
+.loc-depts { padding:10px 14px 12px; }
+.loc-depts-title { font-size:11px; font-weight:600; color:var(--gray-400); text-transform:uppercase; letter-spacing:.5px; margin-bottom:6px; display:flex; align-items:center; gap:6px; }
+.loc-dept-tags { display:flex; flex-wrap:wrap; gap:5px; }
+.dept-tag {
+  background:var(--navy);
+  color:#fff;
+  font-size:10px;
+  padding:2px 9px;
+  border-radius:10px;
+  font-weight:600;
+}
+
+/* ===== LOCATION STAFF PAGE ===== */
+.loc-staff-header {
+  margin-bottom:18px;
+}
+.back-link {
+  display:inline-flex; align-items:center; gap:6px;
+  font-size:12px; color:var(--gray-400); text-decoration:none;
+  margin-bottom:8px; transition:color .2s;
+}
+.back-link:hover { color:var(--navy); }
+.loc-staff-title h2 { font-size:20px; font-weight:700; color:var(--navy); display:flex; align-items:center; gap:10px; }
+.loc-staff-title h2 i { color:var(--accent); }
+.loc-address-sub { font-size:12px; color:var(--gray-400); margin-top:4px; display:flex; align-items:center; gap:5px; }
+.loc-staff-header { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.loc-staff-actions { display:flex; gap:8px; margin-top:24px; flex-shrink:0; }
+
+.loc-summary-bar {
+  display:flex; gap:12px; margin-bottom:18px; flex-wrap:wrap;
+}
+.loc-summary-stat {
+  background:var(--white);
+  border:1px solid var(--gray-200);
+  border-radius:var(--radius-sm);
+  padding:10px 18px;
+  display:flex; flex-direction:column; align-items:center;
+  box-shadow:var(--shadow-sm);
+  min-width:90px;
+}
+.sum-num { font-size:24px; font-weight:700; color:var(--navy); line-height:1; }
+.sum-label { font-size:10px; color:var(--gray-400); text-transform:uppercase; letter-spacing:.5px; margin-top:3px; }
+
+/* Expiring row highlights in table */
+.row-expiring-warn td { background:#fffbeb !important; }
+.row-expiring-critical td { background:#fff1f2 !important; }
+
+.contract-warn     { color:#92400e; font-weight:600; font-size:11px; }
+.contract-critical { color:#7f1d1d; font-weight:600; font-size:11px; }
+.contract-expired  { color:#7f1d1d; font-weight:600; font-size:11px; font-style:italic; }
+
+/* ===== DEPT GROUPED BY LOCATION ===== */
+.loc-dept-group {
+  background:var(--white);
+  border:1px solid var(--gray-200);
+  border-radius:var(--radius);
+  box-shadow:var(--shadow-sm);
+  overflow:hidden;
+  margin-bottom:16px;
+}
+.loc-dept-group-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:13px 18px;
+  background:linear-gradient(135deg,#1e3a5f,#2d5282);
+  color:#fff;
+}
+.loc-group-title { display:flex; align-items:center; gap:10px; }
+.loc-group-title i { font-size:14px; color:rgba(255,255,255,.7); }
+.loc-group-title h3 { font-size:14px; font-weight:700; color:#fff; }
+.loc-dept-empty { padding:14px 18px; font-size:12px; color:var(--gray-400); font-style:italic; }
+.dept-cards-wrap { padding:14px 16px; display:flex; flex-direction:column; gap:12px; }
+
+/* Modal small size variant */
+.modal-box-sm { width:480px; }
+
+/* ===== STAFF FORM SECTION HEADER - Location icon ===== */
+.section-header .fa-map-marker-alt { color:var(--accent); }

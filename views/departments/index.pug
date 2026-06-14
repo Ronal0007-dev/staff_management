@@ -8,10 +8,10 @@ block content
     h2
       i.fas.fa-building
       | &nbsp; Department Management
-    p.subtitle Manage departments, sub-departments and units used across the system.
+    p.subtitle Manage departments, sub-departments and units. Departments are grouped by location.
 
   .dept-layout
-    //- Add Department Card
+    //- ── Add Department Card ──────────────────────────────────
     .card.card-add
       .card-header
         i.fas.fa-plus-circle
@@ -19,62 +19,90 @@ block content
       .card-body
         form(action="/departments" method="POST")
           .form-row-inline
+            select.form-input(name="locationId" required style="min-width:180px")
+              option(value="") Select Location *
+              each loc in locations
+                option(value=loc.id)= loc.name
             input.form-input(type="text" name="name" placeholder="Department name..." required)
             button.btn.btn-primary(type="submit")
               i.fas.fa-plus
-              | &nbsp; Add
+              | &nbsp; Add Department
+        if !locations.length
+          p.no-sub
+            i.fas.fa-exclamation-triangle(style="color:#d97706")
+            | &nbsp; No locations found. &nbsp;
+            a(href="/locations") Add a location first.
 
-    //- Departments List
-    each dept in departments
-      .dept-card
-        .dept-card-header
-          .dept-title
-            .dept-icon
-              i.fas.fa-building
-            h3= dept.name
-          .dept-actions
-            form(action=`/departments/${dept.id}/delete` method="POST" onsubmit="return confirm('Delete this department?')")
-              button.btn-icon.btn-delete(type="submit" title="Delete department")
-                i.fas.fa-trash
+    //- ── Departments grouped by location ─────────────────────
+    if locations.length === 0
+      .empty-state
+        i.fas.fa-building
+        p No locations or departments yet.
+        a.btn.btn-primary(href="/locations") Manage Locations
+    else
+      each loc in locations
+        .loc-dept-group
+          .loc-dept-group-header
+            .loc-group-title
+              i.fas.fa-map-marker-alt
+              h3= loc.name
+            a.btn.btn-sm.btn-outline(href=`/locations/${loc.id}/staff`)
+              i.fas.fa-users
+              | &nbsp; View Staff
 
-        .dept-card-body
-          //- Add sub-department
-          .add-sub-row
-            form.inline-form(action=`/departments/${dept.id}/subdepartments` method="POST")
-              input.form-input.input-sm(type="text" name="name" placeholder="Add sub-department..." required)
-              button.btn.btn-sm.btn-secondary(type="submit")
-                i.fas.fa-plus
-                | &nbsp; Add Sub-dept
-
-          //- Sub-departments
-          if dept.subDepartments && dept.subDepartments.length
-            .subdept-list
-              each sub in dept.subDepartments
-                .subdept-item
-                  .subdept-header
-                    .subdept-name
-                      i.fas.fa-chevron-right
-                      span= sub.name
-                      span.staff-count= (sub.staffMembers ? sub.staffMembers.length : 0) + ' staff'
-                    .subdept-actions
-                      form(action=`/departments/subdepartments/${sub.id}/delete` method="POST" style="display:inline" onsubmit="return confirm('Delete sub-department?')")
-                        button.btn-icon.btn-delete-sm(type="submit" title="Delete")
-                          i.fas.fa-times
-
-                  //- Units (for sub-depts that can have units)
-                  .unit-section
-                    form.inline-form(action=`/departments/subdepartments/${sub.id}/units` method="POST")
-                      input.form-input.input-xs(type="text" name="name" placeholder="Add unit..." required)
-                      button.btn.btn-xs.btn-outline(type="submit")
-                        i.fas.fa-plus
-
-                    if sub.units && sub.units.length
-                      .unit-list
-                        each unit in sub.units
-                          .unit-tag
-                            span= unit.name
-                            form(action=`/departments/units/${unit.id}/delete` method="POST" style="display:inline" onsubmit="return confirm('Delete unit?')")
-                              button.unit-del(type="submit" title="Delete unit")
-                                i.fas.fa-times
+          if !loc.departments || loc.departments.length === 0
+            .loc-dept-empty
+              i.fas.fa-info-circle
+              | &nbsp; No departments in this location yet. Use the form above to add one.
           else
-            p.no-sub No sub-departments yet. Add one above.
+            .dept-cards-wrap
+              each dept in loc.departments
+                .dept-card
+                  .dept-card-header
+                    .dept-title
+                      .dept-icon
+                        i.fas.fa-building
+                      h3= dept.name
+                    .dept-actions
+                      form(action=`/departments/${dept.id}/delete` method="POST" onsubmit="return confirm('Delete this department?')")
+                        button.btn-icon.btn-delete(type="submit" title="Delete department")
+                          i.fas.fa-trash
+
+                  .dept-card-body
+                    //- Add sub-department
+                    .add-sub-row
+                      form.inline-form(action=`/departments/${dept.id}/subdepartments` method="POST")
+                        input.form-input.input-sm(type="text" name="name" placeholder="Add sub-department..." required)
+                        button.btn.btn-sm.btn-secondary(type="submit")
+                          i.fas.fa-plus
+                          | &nbsp; Add Sub-dept
+
+                    //- Sub-departments
+                    if dept.subDepartments && dept.subDepartments.length
+                      .subdept-list
+                        each sub in dept.subDepartments
+                          .subdept-item
+                            .subdept-header
+                              .subdept-name
+                                i.fas.fa-chevron-right
+                                span= sub.name
+                                span.staff-count= (sub.staffMembers ? sub.staffMembers.length : 0) + ' staff'
+                              .subdept-actions
+                                form(action=`/departments/subdepartments/${sub.id}/delete` method="POST" style="display:inline" onsubmit="return confirm('Delete sub-department?')")
+                                  button.btn-icon.btn-delete-sm(type="submit" title="Delete")
+                                    i.fas.fa-times
+                            .unit-section
+                              form.inline-form(action=`/departments/subdepartments/${sub.id}/units` method="POST")
+                                input.form-input.input-xs(type="text" name="name" placeholder="Add unit..." required)
+                                button.btn.btn-xs.btn-outline(type="submit")
+                                  i.fas.fa-plus
+                              if sub.units && sub.units.length
+                                .unit-list
+                                  each unit in sub.units
+                                    .unit-tag
+                                      span= unit.name
+                                      form(action=`/departments/units/${unit.id}/delete` method="POST" style="display:inline" onsubmit="return confirm('Delete unit?')")
+                                        button.unit-del(type="submit" title="Delete unit")
+                                          i.fas.fa-times
+                    else
+                      p.no-sub No sub-departments yet. Add one above.

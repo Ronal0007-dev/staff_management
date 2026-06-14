@@ -1,0 +1,153 @@
+extends ../layout
+
+block title
+  | Locations
+
+block content
+  .loc-header
+    h2
+      i.fas.fa-map-marker-alt
+      | &nbsp; Location Management
+    p.subtitle Manage school branches or campuses. Departments and staff are linked to a location.
+
+  .loc-layout
+
+    //- ── Add Location Card ───────────────────────────────────
+    .card.card-add
+      .card-header
+        i.fas.fa-plus-circle
+        h3 Add New Location
+      .card-body
+        form(action="/locations" method="POST")
+          .form-row
+            .form-group
+              label.form-label Location Name *
+              input.form-input(type="text" name="name" placeholder="e.g. Main Campus" required)
+            .form-group
+              label.form-label Address
+              input.form-input(type="text" name="address" placeholder="Street / area")
+            .form-group
+              label.form-label Region
+              input.form-input(type="text" name="region" placeholder="e.g. Dar es Salaam")
+            .form-group
+              label.form-label Country
+              input.form-input(type="text" name="country" value="Tanzania" placeholder="Country")
+          .form-actions
+            button.btn.btn-primary(type="submit")
+              i.fas.fa-plus
+              | &nbsp; Add Location
+
+    //- ── Locations List ──────────────────────────────────────
+    if locations.length === 0
+      .empty-state
+        i.fas.fa-map-marked-alt
+        p No locations yet. Add your first location above.
+    else
+      .loc-grid
+        each loc in locations
+          .loc-card
+            .loc-card-header
+              .loc-title
+                .loc-icon
+                  i.fas.fa-school
+                .loc-info
+                  h3= loc.name
+                  if loc.address || loc.region
+                    p.loc-address
+                      i.fas.fa-map-pin
+                      | &nbsp;
+                      = [loc.address, loc.region, loc.country].filter(Boolean).join(', ')
+              .loc-badge-wrap
+                span(class=`loc-status ${loc.isActive ? 'status-active' : 'status-archived'}`)
+                  = loc.isActive ? 'Active' : 'Inactive'
+
+            .loc-card-stats
+              .loc-stat
+                span.stat-num= countMap[loc.id] || 0
+                span.stat-label Staff
+              .loc-stat
+                span.stat-num= loc.departments ? loc.departments.length : 0
+                span.stat-label Departments
+
+            .loc-card-actions
+              a.btn.btn-sm.btn-primary(href=`/locations/${loc.id}/staff`)
+                i.fas.fa-users
+                | &nbsp; View Staff
+              a.btn.btn-sm.btn-secondary(href=`/locations/${loc.id}/print` target="_blank")
+                i.fas.fa-print
+                | &nbsp; Print
+
+              //- Edit modal trigger
+              button.btn.btn-sm.btn-outline(type="button" onclick=`openEditModal(${loc.id},'${loc.name}','${loc.address||''}','${loc.region||''}','${loc.country||'Tanzania'}',${loc.isActive})`)
+                i.fas.fa-edit
+                | &nbsp; Edit
+
+              if sessionUser && sessionUser.role === 'super_admin'
+                form(action=`/locations/${loc.id}/delete` method="POST" style="display:inline"
+                  onsubmit="return confirm('Delete this location? Only allowed if no departments are assigned.')")
+                  button.btn.btn-sm.btn-delete-outline(type="submit")
+                    i.fas.fa-trash
+
+            //- Departments preview
+            if loc.departments && loc.departments.length
+              .loc-depts
+                .loc-depts-title
+                  i.fas.fa-building
+                  | &nbsp; Departments
+                .loc-dept-tags
+                  each dept in loc.departments
+                    span.dept-tag= dept.name
+
+  //- ── Edit Modal ──────────────────────────────────────────
+  #editLocModal.modal-overlay(style="display:none")
+    .modal-box.modal-box-sm
+      .modal-header
+        h3 Edit Location
+        button.modal-close(onclick="closeEditModal()")
+          i.fas.fa-times
+      .modal-body
+        form#editLocForm(method="POST")
+          input(type="hidden" name="isActive" id="editIsActive" value="true")
+          .form-group
+            label.form-label Location Name *
+            input.form-input#editName(type="text" name="name" required)
+          .form-group
+            label.form-label Address
+            input.form-input#editAddress(type="text" name="address")
+          .form-group
+            label.form-label Region
+            input.form-input#editRegion(type="text" name="region")
+          .form-group
+            label.form-label Country
+            input.form-input#editCountry(type="text" name="country")
+          .form-group
+            label.form-label Status
+            select.form-input#editStatus(name="isActive" onchange="document.getElementById('editIsActive').value=this.value")
+              option(value="true") Active
+              option(value="false") Inactive
+      .modal-footer
+        button.btn.btn-outline(type="button" onclick="closeEditModal()") Cancel
+        button.btn.btn-primary(type="button" onclick="submitEditLoc()")
+          i.fas.fa-save
+          | &nbsp; Save Changes
+
+block scripts
+  script.
+    function openEditModal(id, name, address, region, country, isActive) {
+      document.getElementById('editLocForm').action = '/locations/' + id + '/edit';
+      document.getElementById('editName').value    = name;
+      document.getElementById('editAddress').value = address;
+      document.getElementById('editRegion').value  = region;
+      document.getElementById('editCountry').value = country;
+      document.getElementById('editStatus').value  = isActive ? 'true' : 'false';
+      document.getElementById('editLocModal').style.display = 'flex';
+    }
+    function closeEditModal() {
+      document.getElementById('editLocModal').style.display = 'none';
+    }
+    function submitEditLoc() {
+      document.getElementById('editLocForm').submit();
+    }
+    document.getElementById('editLocModal').addEventListener('click', function(e) {
+      if (e.target === this) closeEditModal();
+    });

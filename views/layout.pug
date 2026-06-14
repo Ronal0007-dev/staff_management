@@ -35,6 +35,10 @@ html(lang="en")
             a(href="/staff/print/list" target="_blank")
               i.fas.fa-print
               span Print Staff List
+        li
+          a(href="/locations" class=currentPath.startsWith('/locations') ? 'active' : '')
+            i.fas.fa-map-marker-alt
+            span Locations
         if sessionUser && sessionUser.role === 'super_admin'
           li.nav-divider
           li

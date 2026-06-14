@@ -1,5 +1,10 @@
-mixin staffForm(staff, departments, nationalities, isEdit)
+mixin staffForm(staff, locations, departments, nationalities, isEdit)
   - const isFixed = isEdit ? staff.employmentType === 'Fixed' : (old && old.employmentType === 'Fixed')
+  - const selNat   = isEdit ? staff.nationality : (old && old.nationality || '')
+  - const selLocId = isEdit ? staff.locationId  : (old && parseInt(old.locationId) || null)
+  - const selDeptId= isEdit ? staff.departmentId: (old && parseInt(old.departmentId) || null)
+  - const selSubId = isEdit ? staff.subDepartmentId : (old && parseInt(old.subDepartmentId) || null)
+  - const selUnitId= isEdit ? staff.unitId : (old && parseInt(old.unitId) || null)
 
   if errors && errors.length
     .alert.alert-error
@@ -9,7 +14,8 @@ mixin staffForm(staff, departments, nationalities, isEdit)
           li= err
 
   .form-grid
-    //- Personal Info Section
+
+    //- ── Personal Information ────────────────────────────────
     .form-section
       .section-header
         i.fas.fa-id-card
@@ -19,7 +25,7 @@ mixin staffForm(staff, departments, nationalities, isEdit)
         .form-group.form-group-sm
           label.form-label Title *
           select.form-input(name="title" required)
-            option(value="") Select
+            option(value="") —
             each t in ['Mr','Mrs','Ms','Miss']
               option(value=t selected=(isEdit ? staff.title===t : (old && old.title===t)))= t
 
@@ -31,7 +37,7 @@ mixin staffForm(staff, departments, nationalities, isEdit)
         .form-group
           label.form-label Middle Name
           input.form-input(type="text" name="middleName"
-            value=(isEdit ? staff.middleName : (old && old.middleName || '')))
+            value=(isEdit ? staff.middleName || '' : (old && old.middleName || '')))
 
         .form-group
           label.form-label Last Name *
@@ -44,14 +50,27 @@ mixin staffForm(staff, departments, nationalities, isEdit)
           input.form-input(type="date" name="dateOfBirth" required
             value=(isEdit ? staff.dateOfBirth : (old && old.dateOfBirth || '')))
 
+        //- ── Nationality with search ─────────────────────────
         .form-group
           label.form-label Nationality *
-          select.form-input(name="nationality" required)
-            option(value="") Select Nationality
-            each nat in nationalities
-              option(value=nat selected=(isEdit ? staff.nationality===nat : (old && old.nationality===nat)))= nat
+          .nat-select-wrap
+            input.form-input#natSearch(
+              type="text"
+              placeholder="Search nationality..."
+              autocomplete="off"
+              value=selNat
+              onfocus="openNatDropdown()"
+              oninput="filterNats(this.value)"
+            )
+            input(type="hidden" name="nationality" id="natHidden" value=selNat required)
+            .nat-dropdown#natDropdown(style="display:none")
+              each nat in nationalities
+                .nat-option(
+                  onclick=`selectNat('${nat}')`
+                  class=(selNat === nat ? 'nat-selected' : '')
+                )= nat
 
-    //- Employment Info Section
+    //- ── Employment Information ───────────────────────────────
     .form-section
       .section-header
         i.fas.fa-briefcase
@@ -77,192 +96,320 @@ mixin staffForm(staff, departments, nationalities, isEdit)
             each el in ['Unskilled','Certificate','Diploma','Degree','Masters','PHD']
               option(value=el selected=(isEdit ? staff.educationLevel===el : (old && old.educationLevel===el)))= el
 
-      //- Fixed Contract Fields — shown only when Fixed is selected
+      //- Fixed Contract Panel
       .fixed-contract-panel#fixedContractPanel(style=isFixed ? '' : 'display:none')
         .fixed-contract-header
           i.fas.fa-file-contract
           span Fixed Contract Details
-
         .form-row
           .form-group
             label.form-label Contract Length (months) *
-            input.form-input#contractLengthInput(
-              type="number"
-              name="employmentLength"
-              min="1" max="240"
-              placeholder="e.g. 12"
-              oninput="calcEndDate()"
-              value=(isEdit ? staff.employmentLength : (old && old.employmentLength || ''))
-            )
-
+            input.form-input#contractLengthInput(type="number" name="employmentLength"
+              min="1" max="240" placeholder="e.g. 12" oninput="calcEndDate()"
+              value=(isEdit ? staff.employmentLength || '' : (old && old.employmentLength || '')))
           .form-group
             label.form-label Contract Start Date *
-            input.form-input#contractStartInput(
-              type="date"
-              name="contractStartDate"
+            input.form-input#contractStartInput(type="date" name="contractStartDate"
               oninput="calcEndDate()"
-              value=(isEdit ? staff.contractStartDate : (old && old.contractStartDate || ''))
-            )
-
+              value=(isEdit ? staff.contractStartDate || '' : (old && old.contractStartDate || '')))
           .form-group
             label.form-label Contract End Date
             .end-date-wrap
-              input.form-input#contractEndDisplay(
-                type="date"
-                name="contractEndDate"
-                disabled
-                value=(isEdit ? staff.contractEndDate : (old && old.contractEndDate || ''))
-              )
+              input.form-input#contractEndDisplay(type="date" name="contractEndDate" disabled
+                value=(isEdit ? staff.contractEndDate || '' : (old && old.contractEndDate || '')))
               .end-date-badge#endDateBadge(style="display:none")
 
-    //- Department Section
+    //- ── Location & Department ───────────────────────────────
     .form-section
       .section-header
-        i.fas.fa-building
-        h3 Department Assignment
+        i.fas.fa-map-marker-alt
+        h3 Location & Department
 
       .form-row
+
+        //- Location
+        .form-group
+          label.form-label Location *
+          select.form-input#locationSelect(name="locationId" required onchange="onLocationChange(this)")
+            option(value="") — Select Location —
+            each loc in locations
+              option(value=loc.id selected=(selLocId && selLocId===loc.id))= loc.name
+
+        //- Department — always starts empty, filled by JS after location chosen
         .form-group
           label.form-label Department *
-          select.form-input#deptSelect(name="departmentId" required onchange="loadSubDepts(this)")
-            option(value="") Select Department
-            each dept in departments
-              option(value=dept.id
-                data-subdepts=JSON.stringify(dept.subDepartments)
-                selected=(isEdit ? staff.departmentId===dept.id : (old && parseInt(old.departmentId)===dept.id)))
-                = dept.name
+          select.form-input#deptSelect(name="departmentId" required onchange="onDeptChange(this)")
+            option(value="") — Select Location First —
 
+        //- Sub-Department
         .form-group
           label.form-label Sub-Department
-          select.form-input#subDeptSelect(name="subDepartmentId" onchange="loadUnits(this)")
-            option(value="") Select Sub-Department
+          select.form-input#subDeptSelect(name="subDepartmentId" onchange="onSubDeptChange(this)" disabled)
+            option(value="") — Select Department First —
 
-        .form-group#unitGroup
+        //- Unit
+        .form-group
           label.form-label Unit
-          select.form-input#unitSelect(name="unitId")
-            option(value="") Select Unit
+          select.form-input#unitSelect(name="unitId" disabled)
+            option(value="") — Select Sub-Dept First —
+
+      .dept-loading#deptLoading(style="display:none")
+        i.fas.fa-spinner.fa-spin
+        | &nbsp; Loading departments...
 
   .form-actions
     a.btn.btn-outline(href="/staff") Cancel
     button.btn.btn-primary(type="submit")
       i.fas.fa-save
-      if isEdit
-        | &nbsp; Update Staff
-      else
-        | &nbsp; Save Staff
+      | &nbsp;
+      = isEdit ? 'Update Staff' : 'Save Staff'
 
+  //- Pass server values to JS safely
   script.
-    // ── Pre-populate dept/subdept/unit on edit ───────────────
-    (function() {
-      const selDeptId = !{isEdit ? staff.departmentId : (old && old.departmentId ? old.departmentId : 'null')};
-      const selSubId  = !{isEdit ? (staff.subDepartmentId || 'null') : (old && old.subDepartmentId ? old.subDepartmentId : 'null')};
-      const selUnitId = !{isEdit ? (staff.unitId || 'null') : (old && old.unitId ? old.unitId : 'null')};
-      if (selDeptId) {
-        const deptSel = document.getElementById('deptSelect');
-        const opt = [...deptSel.options].find(o => parseInt(o.value) === selDeptId);
-        if (opt) {
-          deptSel.value = selDeptId;
-          populateSubDepts(JSON.parse(opt.dataset.subdepts || '[]'), selSubId, selUnitId);
+    const SF_SEL_LOC   = !{JSON.stringify(selLocId)};
+    const SF_SEL_DEPT  = !{JSON.stringify(selDeptId)};
+    const SF_SEL_SUB   = !{JSON.stringify(selSubId)};
+    const SF_SEL_UNIT  = !{JSON.stringify(selUnitId)};
+
+    // ─── Nationality searchable dropdown ─────────────────────
+    function openNatDropdown() {
+      document.getElementById('natDropdown').style.display = 'block';
+      filterNats(document.getElementById('natSearch').value);
+    }
+
+    function filterNats(q) {
+      const drop = document.getElementById('natDropdown');
+      drop.style.display = 'block';
+      const items = drop.querySelectorAll('.nat-option');
+      const ql = q.toLowerCase();
+      let visible = 0;
+      items.forEach(el => {
+        const match = el.textContent.toLowerCase().includes(ql);
+        el.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+    }
+
+    function selectNat(val) {
+      document.getElementById('natSearch').value = val;
+      document.getElementById('natHidden').value = val;
+      document.getElementById('natDropdown').style.display = 'none';
+      // highlight selected
+      document.querySelectorAll('.nat-option').forEach(el => {
+        el.classList.toggle('nat-selected', el.textContent === val);
+      });
+    }
+
+    // Close nationality dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+      const wrap = document.querySelector('.nat-select-wrap');
+      if (wrap && !wrap.contains(e.target)) {
+        document.getElementById('natDropdown').style.display = 'none';
+        // If typed text doesn't match hidden value, clear both
+        const search = document.getElementById('natSearch').value;
+        const hidden = document.getElementById('natHidden').value;
+        if (search !== hidden) {
+          document.getElementById('natSearch').value = hidden; // revert to last valid
         }
       }
-      // Re-calculate end date on edit if Fixed
-      if (document.getElementById('empTypeSelect').value === 'Fixed') {
-        calcEndDate();
+    });
+
+    // ─── Location → Department (always fetch fresh) ───────────
+    function onLocationChange(sel) {
+      const locId = parseInt(sel.value);
+      resetDept();
+      resetSub();
+      resetUnit();
+      if (!locId) return;
+
+      const deptSel   = document.getElementById('deptSelect');
+      const loading   = document.getElementById('deptLoading');
+      deptSel.disabled = true;
+      loading.style.display = 'flex';
+
+      fetch('/locations/' + locId + '/departments')
+        .then(r => r.json())
+        .then(depts => {
+          deptSel.innerHTML = '<option value="">— Select Department —</option>';
+          if (depts.length === 0) {
+            deptSel.innerHTML = '<option value="">No departments for this location</option>';
+          } else {
+            depts.forEach(d => {
+              const opt = document.createElement('option');
+              opt.value = d.id;
+              opt.textContent = d.name;
+              // Embed sub-departments as JSON on the option
+              const subs = d.subDepartments || d.sub_departments || [];
+              opt.dataset.subdepts = JSON.stringify(subs);
+              deptSel.appendChild(opt);
+            });
+          }
+          deptSel.disabled = false;
+          loading.style.display = 'none';
+        })
+        .catch(() => {
+          deptSel.innerHTML = '<option value="">Error loading departments</option>';
+          deptSel.disabled = false;
+          loading.style.display = 'none';
+        });
+    }
+
+    function onDeptChange(sel) {
+      resetSub();
+      resetUnit();
+      const opt  = sel.options[sel.selectedIndex];
+      if (!opt || !opt.value) return;
+      const subs = JSON.parse(opt.dataset.subdepts || '[]');
+      const subSel = document.getElementById('subDeptSelect');
+      subSel.innerHTML = '<option value="">— Select Sub-Department —</option>';
+      if (subs.length === 0) {
+        subSel.innerHTML = '<option value="">No sub-departments</option>';
+        subSel.disabled = true;
+      } else {
+        subs.forEach(s => {
+          const o = document.createElement('option');
+          o.value = s.id;
+          o.textContent = s.name;
+          o.dataset.units = JSON.stringify(s.units || []);
+          subSel.appendChild(o);
+        });
+        subSel.disabled = false;
       }
+    }
+
+    function onSubDeptChange(sel) {
+      resetUnit();
+      const opt   = sel.options[sel.selectedIndex];
+      if (!opt || !opt.value) return;
+      const units = JSON.parse(opt.dataset.units || '[]');
+      const unitSel = document.getElementById('unitSelect');
+      if (units.length === 0) {
+        unitSel.innerHTML = '<option value="">No units</option>';
+        unitSel.disabled = true;
+      } else {
+        unitSel.innerHTML = '<option value="">— Select Unit —</option>';
+        units.forEach(u => {
+          const o = document.createElement('option');
+          o.value = u.id;
+          o.textContent = u.name;
+          unitSel.appendChild(o);
+        });
+        unitSel.disabled = false;
+      }
+    }
+
+    function resetDept() {
+      const s = document.getElementById('deptSelect');
+      s.innerHTML = '<option value="">— Select Location First —</option>';
+      s.disabled = false;
+    }
+    function resetSub() {
+      const s = document.getElementById('subDeptSelect');
+      s.innerHTML = '<option value="">— Select Department First —</option>';
+      s.disabled = true;
+    }
+    function resetUnit() {
+      const s = document.getElementById('unitSelect');
+      s.innerHTML = '<option value="">— Select Sub-Dept First —</option>';
+      s.disabled = true;
+    }
+
+    // ─── Pre-populate on page load (edit / validation error) ──
+    (function init() {
+      // Fixed contract
+      if (document.getElementById('empTypeSelect').value === 'Fixed') calcEndDate();
+
+      // If no location pre-selected, nothing to do
+      if (!SF_SEL_LOC) return;
+
+      // Set location select value
+      document.getElementById('locationSelect').value = SF_SEL_LOC;
+
+      // Fetch departments for this location, then set dept, sub, unit
+      fetch('/locations/' + SF_SEL_LOC + '/departments')
+        .then(r => r.json())
+        .then(depts => {
+          const deptSel = document.getElementById('deptSelect');
+          deptSel.innerHTML = '<option value="">— Select Department —</option>';
+          depts.forEach(d => {
+            const opt = document.createElement('option');
+            opt.value = d.id;
+            opt.textContent = d.name;
+            const subs = d.subDepartments || d.sub_departments || [];
+            opt.dataset.subdepts = JSON.stringify(subs);
+            if (SF_SEL_DEPT && parseInt(d.id) === SF_SEL_DEPT) opt.selected = true;
+            deptSel.appendChild(opt);
+          });
+          deptSel.disabled = false;
+
+          // If dept was pre-selected, populate sub-depts
+          if (SF_SEL_DEPT) {
+            const selOpt = [...deptSel.options].find(o => parseInt(o.value) === SF_SEL_DEPT);
+            if (selOpt) {
+              const subs = JSON.parse(selOpt.dataset.subdepts || '[]');
+              const subSel = document.getElementById('subDeptSelect');
+              subSel.innerHTML = '<option value="">— Select Sub-Department —</option>';
+              subs.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s.id;
+                o.textContent = s.name;
+                o.dataset.units = JSON.stringify(s.units || []);
+                if (SF_SEL_SUB && parseInt(s.id) === SF_SEL_SUB) o.selected = true;
+                subSel.appendChild(o);
+              });
+              subSel.disabled = subs.length === 0;
+
+              // If sub-dept was pre-selected, populate units
+              if (SF_SEL_SUB) {
+                const selSub = [...subSel.options].find(o => parseInt(o.value) === SF_SEL_SUB);
+                if (selSub) {
+                  const units = JSON.parse(selSub.dataset.units || '[]');
+                  const unitSel = document.getElementById('unitSelect');
+                  if (units.length > 0) {
+                    unitSel.innerHTML = '<option value="">— Select Unit —</option>';
+                    units.forEach(u => {
+                      const o = document.createElement('option');
+                      o.value = u.id;
+                      o.textContent = u.name;
+                      if (SF_SEL_UNIT && parseInt(u.id) === SF_SEL_UNIT) o.selected = true;
+                      unitSel.appendChild(o);
+                    });
+                    unitSel.disabled = false;
+                  }
+                }
+              }
+            }
+          }
+        });
     })();
 
-    // ── Toggle fixed contract panel ───────────────────────────
+    // ─── Fixed contract ───────────────────────────────────────
     function toggleFixedFields(val) {
-      const panel = document.getElementById('fixedContractPanel');
-      panel.style.display = val === 'Fixed' ? '' : 'none';
+      document.getElementById('fixedContractPanel').style.display = val === 'Fixed' ? '' : 'none';
       if (val !== 'Fixed') {
-        document.getElementById('contractLengthInput').value = '';
-        document.getElementById('contractStartInput').value  = '';
-        document.getElementById('contractEndDisplay').value  = '';
+        document.getElementById('contractLengthInput').value  = '';
+        document.getElementById('contractStartInput').value   = '';
+        document.getElementById('contractEndDisplay').value   = '';
         document.getElementById('endDateBadge').style.display = 'none';
       }
     }
 
-    // ── Calculate and display contract end date ───────────────
     function calcEndDate() {
-      const months    = parseInt(document.getElementById('contractLengthInput').value);
-      const startVal  = document.getElementById('contractStartInput').value;
-      const endInput  = document.getElementById('contractEndDisplay');
-      const badge     = document.getElementById('endDateBadge');
-
-      if (!months || !startVal) {
-        endInput.value = '';
-        badge.style.display = 'none';
-        return;
-      }
-
-      const start = new Date(startVal);
-      start.setMonth(start.getMonth() + months);
-      // Fix day overflow (e.g. Jan 31 + 1 month = Mar 3 → use last day of month)
-      const endDate = start;
-      const yyyy = endDate.getFullYear();
-      const mm   = String(endDate.getMonth() + 1).padStart(2, '0');
-      const dd   = String(endDate.getDate()).padStart(2, '0');
-      const endStr = `${yyyy}-${mm}-${dd}`;
-      endInput.value = endStr;
-
-      // Badge: how far away is the end date?
-      const today     = new Date();
-      today.setHours(0,0,0,0);
-      const diffMs    = endDate - today;
-      const diffDays  = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-      const diffMonths = Math.floor(diffDays / 30);
-
+      const months   = parseInt(document.getElementById('contractLengthInput').value);
+      const startVal = document.getElementById('contractStartInput').value;
+      const endInput = document.getElementById('contractEndDisplay');
+      const badge    = document.getElementById('endDateBadge');
+      if (!months || !startVal) { endInput.value = ''; badge.style.display = 'none'; return; }
+      const end = new Date(startVal);
+      end.setMonth(end.getMonth() + months);
+      const yyyy = end.getFullYear();
+      const mm   = String(end.getMonth() + 1).padStart(2, '0');
+      const dd   = String(end.getDate()).padStart(2, '0');
+      endInput.value = `${yyyy}-${mm}-${dd}`;
+      const today    = new Date(); today.setHours(0, 0, 0, 0);
+      const diffDays = Math.ceil((end - today) / 86400000);
       badge.style.display = '';
-      if (diffDays < 0) {
-        badge.className = 'end-date-badge badge-expired';
-        badge.textContent = 'Expired ' + Math.abs(diffDays) + ' day(s) ago';
-      } else if (diffDays <= 90) {
-        badge.className = 'end-date-badge badge-expiring';
-        badge.textContent = '⚠ Expiring in ' + diffDays + ' day(s)';
-      } else {
-        badge.className = 'end-date-badge badge-ok';
-        badge.textContent = diffMonths + ' month(s) remaining';
-      }
-    }
-
-    // ── Dept / Sub-dept / Unit loaders ────────────────────────
-    function loadSubDepts(sel) {
-      const subs = JSON.parse(sel.options[sel.selectedIndex]?.dataset?.subdepts || '[]');
-      populateSubDepts(subs, null, null);
-    }
-
-    function populateSubDepts(subs, selSubId, selUnitId) {
-      const subSel = document.getElementById('subDeptSelect');
-      subSel.innerHTML = '<option value="">Select Sub-Department</option>';
-      document.getElementById('unitSelect').innerHTML = '<option value="">Select Unit</option>';
-      subs.forEach(s => {
-        const opt = document.createElement('option');
-        opt.value = s.id;
-        opt.textContent = s.name;
-        opt.dataset.units = JSON.stringify(s.units || []);
-        if (selSubId && parseInt(s.id) === parseInt(selSubId)) opt.selected = true;
-        subSel.appendChild(opt);
-      });
-      if (selSubId) {
-        const selOpt = [...subSel.options].find(o => parseInt(o.value) === parseInt(selSubId));
-        if (selOpt) populateUnits(JSON.parse(selOpt.dataset.units || '[]'), selUnitId);
-      }
-    }
-
-    function loadUnits(sel) {
-      populateUnits(JSON.parse(sel.options[sel.selectedIndex]?.dataset?.units || '[]'), null);
-    }
-
-    function populateUnits(units, selUnitId) {
-      const unitSel = document.getElementById('unitSelect');
-      unitSel.innerHTML = '<option value="">Select Unit</option>';
-      units.forEach(u => {
-        const opt = document.createElement('option');
-        opt.value = u.id;
-        opt.textContent = u.name;
-        if (selUnitId && parseInt(u.id) === parseInt(selUnitId)) opt.selected = true;
-        unitSel.appendChild(opt);
-      });
-      document.getElementById('unitGroup').style.display = units.length ? '' : 'none';
+      if (diffDays < 0)        { badge.className = 'end-date-badge badge-expired';  badge.textContent = 'Expired ' + Math.abs(diffDays) + ' day(s) ago'; }
+      else if (diffDays <= 90) { badge.className = 'end-date-badge badge-expiring'; badge.textContent = '⚠ Expiring in ' + diffDays + ' day(s)'; }
+      else                     { badge.className = 'end-date-badge badge-ok';       badge.textContent = Math.floor(diffDays / 30) + ' month(s) remaining'; }
     }

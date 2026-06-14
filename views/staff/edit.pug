@@ -17,4 +17,4 @@ block content
         span.staff-no= staff.staffNumber
 
     form(action=`/staff/${staff.id}` method="POST")
-      +staffForm(staff, departments, nationalities, true)
+      +staffForm(staff, locations, departments, nationalities, true)

@@ -37,7 +37,13 @@ block content
       a.btn.btn-primary(href="/staff/new")
         i.fas.fa-user-plus
         | &nbsp; Add New Staff
-      a.btn.btn-secondary(href="/staff/print/list" target="_blank")
+      - const printParams = []
+      - if (search) printParams.push('search=' + encodeURIComponent(search))
+      - if (selectedDept) printParams.push('dept=' + encodeURIComponent(selectedDept))
+      - if (selectedLocation) printParams.push('location=' + encodeURIComponent(selectedLocation))
+      - if (showDeleted) printParams.push('deleted=true')
+      - const printHref = '/staff/print/list' + (printParams.length ? '?' + printParams.join('&') : '')
+      a.btn.btn-secondary(href=printHref target="_blank")
         i.fas.fa-print
         | &nbsp; Print List
 
@@ -45,6 +51,11 @@ block content
     form.filter-form(action="/staff" method="GET")
       .filter-group
         input.form-input(type="text" name="search" placeholder="Search by name or staff no..." value=search)
+      .filter-group
+        select.form-input(name="location")
+          option(value="") All Locations
+          each loc in locations
+            option(value=loc.id selected=selectedLocation==loc.id)= loc.name
       .filter-group
         select.form-input(name="dept")
           option(value="") All Departments
@@ -192,6 +203,7 @@ block scripts
           </div>
           <div class="modal-section">
             <h4>Employment Information</h4>
+            <div class="info-row"><span class="label">Location</span><span class="value">${d.location ? d.location.name : '<span class="na">N/A</span>'}</span></div>
             <div class="info-row"><span class="label">Date of Employment</span><span class="value">${fmtDate(d.dateOfEmployment)}</span></div>
             <div class="info-row"><span class="label">Employment Type</span><span class="value"><span class="emp-type emp-${empType}">${fmt(d.employmentType)}</span></span></div>
             ${d.employmentType === 'Fixed' && d.employmentLength ? `

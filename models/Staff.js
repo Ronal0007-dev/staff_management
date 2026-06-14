@@ -41,6 +41,7 @@ const Staff = sequelize.define('Staff', {
   departmentId: { type: DataTypes.INTEGER, allowNull: false, field: 'department_id' },
   subDepartmentId: { type: DataTypes.INTEGER, allowNull: true, field: 'sub_department_id' },
   unitId: { type: DataTypes.INTEGER, allowNull: true, field: 'unit_id' },
+  locationId: { type: DataTypes.INTEGER, allowNull: true, field: 'location_id' },
   staffNumber: { type: DataTypes.STRING(20), allowNull: true, unique: true, field: 'staff_number' },
   deletedAt: { type: DataTypes.DATE, allowNull: true, field: 'deleted_at' }
 }, {

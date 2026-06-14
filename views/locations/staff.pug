@@ -1,0 +1,185 @@
+extends ../layout
+
+block title
+  | #{location.name} — Staff 
+
+block content
+  .loc-staff-header
+    .loc-staff-title
+      a.back-link(href="/locations")
+        i.fas.fa-arrow-left
+        | &nbsp; Locations
+      h2
+        i.fas.fa-school
+        | &nbsp; #{location.name}
+      if location.address || location.region
+        p.loc-address-sub
+          i.fas.fa-map-pin
+          | &nbsp;
+          = [location.address, location.region, location.country].filter(Boolean).join(', ')
+    .loc-staff-actions
+      a.btn.btn-secondary(href=`/locations/${location.id}/print` target="_blank")
+        i.fas.fa-print
+        | &nbsp; Print List
+      a.btn.btn-primary(href="/staff/new")
+        i.fas.fa-user-plus
+        | &nbsp; Add Staff
+
+  //- Filters
+  .filter-bar
+    form.filter-form(action=`/locations/${location.id}/staff` method="GET")
+      .filter-group
+        input.form-input(type="text" name="search" placeholder="Search name or staff no..." value=search)
+      .filter-group
+        select.form-input(name="dept")
+          option(value="") All Departments
+          each dept in departments
+            option(value=dept.id selected=parseInt(selectedDept)===dept.id)= dept.name
+      .filter-group
+        button.btn.btn-primary(type="submit")
+          i.fas.fa-search
+          | &nbsp; Filter
+        if search || selectedDept
+          a.btn.btn-outline(href=`/locations/${location.id}/staff`) Clear
+
+  //- Summary stats
+  .loc-summary-bar
+    .loc-summary-stat
+      span.sum-num= staff.length
+      span.sum-label Total Staff
+    .loc-summary-stat
+      span.sum-num= staff.filter(s => s.employmentType === 'Permanent').length
+      span.sum-label Permanent
+    .loc-summary-stat
+      span.sum-num= staff.filter(s => s.employmentType === 'Fixed').length
+      span.sum-label Fixed
+    .loc-summary-stat
+      span.sum-num= staff.filter(s => s.employmentType === 'Temporary').length
+      span.sum-label Temporary
+
+  if staff.length === 0
+    .empty-state
+      i.fas.fa-user-slash
+      p No staff found at #{location.name}.
+      a.btn.btn-primary(href="/staff/new") Add Staff Member
+  else
+    .table-wrapper
+      table.staff-table
+        thead
+          tr
+            th #
+            th Staff No.
+            th Name
+            th Sub-Dept / Unit
+            th Employment
+            th Education
+            th Date Employed
+            th Contract End
+            th Actions
+        tbody
+          each member, i in staff
+            - const today = new Date(); today.setHours(0,0,0,0)
+            - const endDate = member.employmentType === 'Fixed' && member.contractEndDate ? new Date(member.contractEndDate) : null
+            - const daysLeft = endDate ? Math.ceil((endDate - today) / 86400000) : null
+            tr(class=(daysLeft !== null && daysLeft <= 30) ? 'row-expiring-critical' : (daysLeft !== null && daysLeft <= 90) ? 'row-expiring-warn' : '')
+              td= i + 1
+              td
+                span.staff-no= member.staffNumber || '—'
+              td
+                .staff-name
+                  span.title-badge= member.title
+                  | &nbsp;
+                  strong= member.firstName + ' ' + (member.middleName ? member.middleName[0]+'. ' : '') + member.lastName
+              td
+                if member.subDepartment
+                  span.subdept-text= member.subDepartment.name
+                  if member.unit
+                    span.unit-text  / #{member.unit.name}
+                else
+                  | —
+              td
+                span(class=`emp-type emp-${member.employmentType.toLowerCase()}`)= member.employmentType
+              td= member.educationLevel
+              td= moment(member.dateOfEmployment).format('DD MMM YYYY')
+              td
+                if member.employmentType === 'Fixed' && member.contractEndDate
+                  if daysLeft < 0
+                    span.contract-expired= moment(member.contractEndDate).format('DD MMM YYYY') + ' (Expired)'
+                  else if daysLeft <= 30
+                    span.contract-critical= moment(member.contractEndDate).format('DD MMM YYYY') + ' (' + daysLeft + 'd)'
+                  else if daysLeft <= 90
+                    span.contract-warn= moment(member.contractEndDate).format('DD MMM YYYY') + ' (' + daysLeft + 'd)'
+                  else
+                    = moment(member.contractEndDate).format('DD MMM YYYY')
+                else
+                  span.na —
+              td
+                .action-buttons
+                  button.btn-icon.btn-view(onclick=`openViewModal(${member.id})` title="View")
+                    i.fas.fa-eye
+                  a.btn-icon.btn-edit(href=`/staff/${member.id}/edit` title="Edit")
+                    i.fas.fa-edit
+                  a.btn-icon.btn-print(href=`/staff/${member.id}/print` target="_blank" title="Print")
+                    i.fas.fa-print
+
+  //- View Modal (reuse same pattern)
+  #viewModal.modal-overlay(style="display:none")
+    .modal-box
+      .modal-header
+        h3#modalTitle Staff Details
+        button.modal-close(onclick="closeViewModal()")
+          i.fas.fa-times
+      .modal-body#modalBody
+        .modal-loading
+          i.fas.fa-spinner.fa-spin
+          | &nbsp; Loading...
+      .modal-footer
+        button.btn.btn-outline(onclick="closeViewModal()") Close
+        a#modalPrintBtn.btn.btn-primary(href="#" target="_blank")
+          i.fas.fa-print
+          | &nbsp; Print
+
+block scripts
+  script.
+    function openViewModal(id) {
+      document.getElementById('viewModal').style.display = 'flex';
+      document.getElementById('modalBody').innerHTML = '<div class="modal-loading"><i class="fas fa-spinner fa-spin"></i>&nbsp; Loading...</div>';
+      fetch('/staff/' + id + '/view')
+        .then(r => r.json())
+        .then(data => {
+          document.getElementById('modalTitle').textContent =
+            data.title + ' ' + data.firstName + ' ' + (data.middleName || '') + ' ' + data.lastName;
+          document.getElementById('modalPrintBtn').href = '/staff/' + id + '/print';
+          document.getElementById('modalBody').innerHTML = buildModalContent(data);
+        });
+    }
+    function closeViewModal() {
+      document.getElementById('viewModal').style.display = 'none';
+    }
+    function buildModalContent(d) {
+      const fmt = v => (v !== null && v !== undefined && v !== '') ? v : '<span class="na">N/A</span>';
+      const fmtDate = v => { if (!v) return '<span class="na">N/A</span>'; const dt=new Date(v); return isNaN(dt)?v:dt.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); };
+      const empType = (d.employmentType||'').toLowerCase();
+      return `<div class="modal-grid">
+        <div class="modal-section"><h4>Personal Information</h4>
+          <div class="info-row"><span class="label">Staff No</span><span class="value"><code class="badge-staff">${fmt(d.staffNumber)}</code></span></div>
+          <div class="info-row"><span class="label">Title</span><span class="value">${fmt(d.title)}</span></div>
+          <div class="info-row"><span class="label">First Name</span><span class="value">${fmt(d.firstName)}</span></div>
+          <div class="info-row"><span class="label">Middle Name</span><span class="value">${fmt(d.middleName)}</span></div>
+          <div class="info-row"><span class="label">Last Name</span><span class="value">${fmt(d.lastName)}</span></div>
+          <div class="info-row"><span class="label">Date of Birth</span><span class="value">${fmtDate(d.dateOfBirth)}</span></div>
+          <div class="info-row"><span class="label">Nationality</span><span class="value">${fmt(d.nationality)}</span></div>
+        </div>
+        <div class="modal-section"><h4>Employment Information</h4>
+          <div class="info-row"><span class="label">Location</span><span class="value">${d.location ? d.location.name : '<span class="na">N/A</span>'}</span></div>
+          <div class="info-row"><span class="label">Date of Employment</span><span class="value">${fmtDate(d.dateOfEmployment)}</span></div>
+          <div class="info-row"><span class="label">Employment Type</span><span class="value"><span class="emp-type emp-${empType}">${fmt(d.employmentType)}</span></span></div>
+          ${d.employmentType==='Fixed'&&d.employmentLength?`<div class="info-row"><span class="label">Contract Length</span><span class="value">${d.employmentLength} months</span></div><div class="info-row"><span class="label">Contract Start</span><span class="value">${fmtDate(d.contractStartDate)}</span></div><div class="info-row"><span class="label">Contract End</span><span class="value">${fmtDate(d.contractEndDate)}</span></div>`:''}
+          <div class="info-row"><span class="label">Education Level</span><span class="value">${fmt(d.educationLevel)}</span></div>
+          <div class="info-row"><span class="label">Department</span><span class="value">${d.department?d.department.name:'<span class="na">N/A</span>'}</span></div>
+          <div class="info-row"><span class="label">Sub-Department</span><span class="value">${d.subDepartment?d.subDepartment.name:'<span class="na">N/A</span>'}</span></div>
+        </div></div>`;
+    }
+    document.getElementById('viewModal').addEventListener('click', function(e) {
+      if (e.target === this) closeViewModal();
+    });

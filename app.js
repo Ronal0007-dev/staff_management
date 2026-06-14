@@ -57,6 +57,7 @@ app.use('/auth', require('./routes/auth'));
 app.use('/staff',       requireAuth, requirePasswordChanged, require('./routes/staff'));
 app.use('/departments', requireAuth, requirePasswordChanged, require('./routes/departments'));
 app.use('/users',       require('./routes/users'));
+app.use('/locations',   require('./routes/locations'));
 
 // Dashboard redirect
 app.get('/', (req, res) => {

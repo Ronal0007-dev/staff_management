@@ -124,6 +124,9 @@ html(lang="en")
           span.label Education Level
           span.value= staff.educationLevel
         .info-row
+          span.label Location
+          span.value= staff.location ? staff.location.name : '—'
+        .info-row
           span.label Department
           span.value= staff.department ? staff.department.name : '—'
         .info-row
