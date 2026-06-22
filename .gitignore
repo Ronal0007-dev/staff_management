@@ -4,3 +4,5 @@ README.md
 seeders/seed.js
 .env
 .env.example
+docker-compose.yml
+Dockerfile
