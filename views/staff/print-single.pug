@@ -67,6 +67,7 @@ html(lang="en")
 
   - const today = new Date(); today.setHours(0,0,0,0)
   - const isFixed = staff.employmentType === 'Fixed'
+  - const resolvedLocation = staff.location ? staff.location : (staff.department && staff.department.location ? staff.department.location : null)
   - const endDate = isFixed && staff.contractEndDate ? new Date(staff.contractEndDate) : null
   - const daysLeft = endDate ? Math.ceil((endDate - today) / (1000*60*60*24)) : null
   - const monthsLeft = daysLeft !== null ? Math.floor(Math.abs(daysLeft) / 30) : null
@@ -110,6 +111,9 @@ html(lang="en")
       h2.section-title Employment Information
       .info-grid
         .info-row
+          span.label Location
+          span.value= resolvedLocation ? resolvedLocation.name : '—'
+        .info-row
           span.label Date of Employment
           span.value= moment(staff.dateOfEmployment).format('DD MMMM YYYY')
         .info-row
@@ -123,9 +127,6 @@ html(lang="en")
         .info-row
           span.label Education Level
           span.value= staff.educationLevel
-        .info-row
-          span.label Location
-          span.value= staff.location ? staff.location.name : '—'
         .info-row
           span.label Department
           span.value= staff.department ? staff.department.name : '—'

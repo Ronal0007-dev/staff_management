@@ -61,6 +61,7 @@ html(lang="en")
           tr
             th # 
             th Staff No.
+            th Location
             th Title
             th Full Name
             th Sub-Dept / Unit
@@ -69,7 +70,7 @@ html(lang="en")
             th Date Employed
             th Contract Start
             th Contract End
-            th Location
+            th Nationality
         tbody
           each member, i in staff
             - const isFixed = member.employmentType === 'Fixed'
@@ -79,6 +80,8 @@ html(lang="en")
             tr
               td= i + 1
               td= member.staffNumber || '—'
+              - const rowLoc = member.location ? member.location : (member.department && member.department.location ? member.department.location : null)
+              td= rowLoc ? rowLoc.name : '—'
               td= member.title
               td= member.firstName + ' ' + (member.middleName ? member.middleName[0]+'. ' : '') + member.lastName
               td= (member.subDepartment ? member.subDepartment.name : '—') + (member.unit ? ' / ' + member.unit.name : '')
@@ -107,7 +110,7 @@ html(lang="en")
                     span.warn-flag= flag
                 else
                   span.na —
-              td= member.location ? member.location.name : '—'
+              td= member.nationality
 
           tr.total-row
             td(colspan="11") Total Staff: #{staff.length}

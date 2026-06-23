@@ -1237,3 +1237,173 @@ body {
 
 /* ===== STAFF FORM SECTION HEADER - Location icon ===== */
 .section-header .fa-map-marker-alt { color:var(--accent); }
+
+/* ===== NATIONALITY SEARCHABLE DROPDOWN ===== */
+.nat-select-wrap {
+  position: relative;
+}
+
+.nat-select-wrap .form-input {
+  width: 100%;
+}
+
+.nat-dropdown {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0; right: 0;
+  background: var(--white);
+  border: 1.5px solid var(--accent);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 500;
+}
+
+.nat-option {
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--gray-700);
+  cursor: pointer;
+  transition: background .1s;
+}
+
+.nat-option:hover    { background: var(--accent-light); color: var(--accent); }
+.nat-option.nat-selected { background: var(--navy); color: #fff; font-weight: 600; }
+
+/* ===== DEPT LOADING INDICATOR ===== */
+.dept-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--accent);
+  padding: 6px 0;
+  grid-column: 1 / -1;
+}
+
+/* Disabled select styling */
+select:disabled {
+  background: var(--gray-100);
+  color: var(--gray-400);
+  cursor: not-allowed;
+  border-color: var(--gray-200);
+}
+
+/* ===== CONTRACT STATUS BADGES ===== */
+.status-renewed    { background: #d1fae5; color: #065f46; }
+.status-terminated { background: #f3f4f6; color: #374151; }
+.status-expired    { background: #fee2e2; color: #7f1d1d; }
+.status-auto-removed { background: #f3f4f6; color: #9ca3af; font-style: italic; }
+
+.status-window-closed {
+  font-size: 10px;
+  color: var(--gray-400);
+  font-style: italic;
+  margin-left: 4px;
+}
+
+/* ===== CONTRACT STATUS CHANGE BUTTON ===== */
+.btn-status-change {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  font-size: 10px;
+  font-weight: 600;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1.5px solid #fcd34d;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-left: 6px;
+  transition: all .2s;
+  vertical-align: middle;
+}
+.btn-status-change:hover {
+  background: #f59e0b;
+  color: #fff;
+  border-color: #f59e0b;
+}
+
+/* ===== STATUS MODAL ===== */
+.modal-header-warning {
+  background: linear-gradient(135deg, #92400e, #d97706) !important;
+}
+
+.status-modal-info {
+  background: #fef9ee;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  margin-bottom: 4px;
+}
+
+.status-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+  font-size: 12px;
+}
+
+.status-info-label { color: var(--gray-500); }
+.status-info-value { font-weight: 700; color: var(--gray-700); }
+.status-expired-val { color: var(--red); }
+.status-warn-val    { color: var(--amber); }
+
+.status-info-note {
+  font-size: 11px;
+  color: var(--gray-400);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #fde68a;
+}
+
+/* ===== STATUS CHOICE CARDS ===== */
+.status-choice-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.status-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  border: 2px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+.status-choice input[type=radio] { margin-top: 3px; flex-shrink: 0; cursor: pointer; }
+
+.status-choice-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1;
+}
+
+.status-choice-body i { font-size: 16px; margin-top: 2px; color: var(--gray-400); }
+.status-choice-body strong { display: block; font-size: 13px; color: var(--gray-700); margin-bottom: 2px; }
+.status-choice-body p { font-size: 11px; color: var(--gray-400); margin: 0; }
+
+.status-choice:hover { border-color: var(--gray-400); }
+
+.status-choice.choice-selected {
+  border-color: var(--navy);
+  background: var(--accent-light);
+}
+.status-choice.choice-selected .status-choice-body i { color: var(--navy); }
+.status-choice.choice-selected .status-choice-body strong { color: var(--navy); }
+
+#choiceTerminated.choice-selected {
+  border-color: var(--red);
+  background: var(--red-light);
+}
+#choiceTerminated.choice-selected .status-choice-body i { color: var(--red); }
+#choiceTerminated.choice-selected .status-choice-body strong { color: var(--red); }

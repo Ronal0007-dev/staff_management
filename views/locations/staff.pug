@@ -1,7 +1,7 @@
 extends ../layout
 
 block title
-  | #{location.name} — Staff 
+  | = location.name + ' — Staff'
 
 block content
   .loc-staff-header
@@ -114,6 +114,28 @@ block content
                 else
                   span.na —
               td
+                - const locDays = (member.employmentType === 'Fixed' && member.contractEndDate) ? Math.floor((new Date() - new Date(member.contractEndDate)) / 86400000) : null
+                if member.contractStatus === 'renewed'
+                  span.status-badge.status-renewed Renewed
+                else if member.contractStatus === 'terminated'
+                  span.status-badge.status-terminated Terminated
+                else if locDays !== null && locDays > 0 && locDays <= 60
+                  span.status-badge.status-expired Expired
+                  button.btn-status-change(
+                    type="button"
+                    data-id=`${member.id}`
+                    data-name=`${member.firstName} ${member.lastName}`
+                    data-days=`${locDays}`
+                    onclick="openStatusModal(this)"
+                    title="Change contract status")
+                    i.fas.fa-exchange-alt
+                    | &nbsp; Update
+                else if locDays !== null && locDays > 60
+                  span.status-badge.status-expired Expired
+                  span.status-window-closed  (window closed)
+                else
+                  span.status-badge.status-active Active
+              td
                 .action-buttons
                   button.btn-icon.btn-view(onclick=`openViewModal(${member.id})` title="View")
                     i.fas.fa-eye
@@ -121,6 +143,43 @@ block content
                     i.fas.fa-edit
                   a.btn-icon.btn-print(href=`/staff/${member.id}/print` target="_blank" title="Print")
                     i.fas.fa-print
+
+  //- Contract Status Modal
+  #statusModal.modal-overlay(style="display:none")
+    .modal-box.modal-box-sm
+      .modal-header.modal-header-warning
+        i.fas.fa-exchange-alt
+        h3#statusModalTitle Contract Status Update
+        button.modal-close(onclick="closeStatusModal()")
+          i.fas.fa-times
+      .modal-body
+        .status-modal-info#statusModalInfo
+        form#statusForm(action="" method="POST")
+          .form-group(style="margin-top:14px")
+            label.form-label New Contract Status *
+            .status-choice-wrap
+              label.status-choice#choiceRenewed
+                input(type="radio" name="newStatus" value="renewed" required onchange="highlightChoice()")
+                .status-choice-body
+                  i.fas.fa-sync-alt
+                  div
+                    strong Renewed
+                    p Contract renewed for another term.
+              label.status-choice#choiceTerminated
+                input(type="radio" name="newStatus" value="terminated" required onchange="highlightChoice()")
+                .status-choice-body
+                  i.fas.fa-user-times
+                  div
+                    strong Terminated
+                    p Contract ended, will not be renewed.
+          .form-group(style="margin-top:12px")
+            label.form-label Note (optional)
+            input.form-input(type="text" name="note" placeholder="e.g. Renewed for 1 year")
+      .modal-footer
+        button.btn.btn-outline(type="button" onclick="closeStatusModal()") Cancel
+        button.btn.btn-primary(type="button" onclick="submitStatusForm()")
+          i.fas.fa-save
+          | &nbsp; Save Status
 
   //- View Modal (reuse same pattern)
   #viewModal.modal-overlay(style="display:none")
@@ -171,7 +230,7 @@ block scripts
           <div class="info-row"><span class="label">Nationality</span><span class="value">${fmt(d.nationality)}</span></div>
         </div>
         <div class="modal-section"><h4>Employment Information</h4>
-          <div class="info-row"><span class="label">Location</span><span class="value">${d.location ? d.location.name : '<span class="na">N/A</span>'}</span></div>
+          <div class="info-row"><span class="label">Location</span><span class="value">${d.department.location ? d.department.location.name : '<span class="na">N/A</span>'}</span></div>
           <div class="info-row"><span class="label">Date of Employment</span><span class="value">${fmtDate(d.dateOfEmployment)}</span></div>
           <div class="info-row"><span class="label">Employment Type</span><span class="value"><span class="emp-type emp-${empType}">${fmt(d.employmentType)}</span></span></div>
           ${d.employmentType==='Fixed'&&d.employmentLength?`<div class="info-row"><span class="label">Contract Length</span><span class="value">${d.employmentLength} months</span></div><div class="info-row"><span class="label">Contract Start</span><span class="value">${fmtDate(d.contractStartDate)}</span></div><div class="info-row"><span class="label">Contract End</span><span class="value">${fmtDate(d.contractEndDate)}</span></div>`:''}
@@ -182,4 +241,41 @@ block scripts
     }
     document.getElementById('viewModal').addEventListener('click', function(e) {
       if (e.target === this) closeViewModal();
+    });
+
+    function openStatusModal(btn) {
+      const id          = btn.getAttribute('data-id');
+      const name        = btn.getAttribute('data-name');
+      const daysExpired = parseInt(btn.getAttribute('data-days'));
+      const daysLeft    = 60 - daysExpired;
+      const warnCls     = daysLeft <= 14 ? 'status-warn-val' : '';
+      document.getElementById('statusForm').action = '/staff/' + id + '/contract-status';
+      document.getElementById('statusModalTitle').textContent = name;
+      document.getElementById('statusModalInfo').innerHTML =
+        '<div class="status-info-row"><span class="status-info-label">Expired</span><span class="status-info-value status-expired-val">' + daysExpired + ' day(s) ago</span></div>' +
+        '<div class="status-info-row"><span class="status-info-label">Window closes in</span><span class="status-info-value ' + warnCls + '">' + daysLeft + ' day(s)</span></div>' +
+        '<p class="status-info-note">Choose the outcome before the 2-month window closes.</p>';
+      document.querySelectorAll('#statusForm input[type=radio]').forEach(r => r.checked = false);
+      var noteEl = document.querySelector('#statusForm input[name=note]');
+      if (noteEl) noteEl.value = '';
+      document.getElementById('choiceRenewed').classList.remove('choice-selected');
+      document.getElementById('choiceTerminated').classList.remove('choice-selected');
+      document.getElementById('statusModal').style.display = 'flex';
+    }
+    function closeStatusModal() { document.getElementById('statusModal').style.display = 'none'; }
+    function highlightChoice() {
+      var checked = document.querySelector('#statusForm input[name=newStatus]:checked');
+      var val = checked ? checked.value : null;
+      document.getElementById('choiceRenewed').classList.toggle('choice-selected', val === 'renewed');
+      document.getElementById('choiceTerminated').classList.toggle('choice-selected', val === 'terminated');
+    }
+    function submitStatusForm() {
+      if (!document.querySelector('#statusForm input[name=newStatus]:checked')) {
+        alert('Please select Renewed or Terminated before saving.');
+        return;
+      }
+      document.getElementById('statusForm').submit();
+    }
+    document.getElementById('statusModal').addEventListener('click', function(e) {
+      if (e.target === this) closeStatusModal();
     });

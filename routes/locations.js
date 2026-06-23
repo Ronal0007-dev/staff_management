@@ -1,6 +1,7 @@
 const express  = require('express');
 const router   = express.Router();
 const { Location, Department, Staff, SubDepartment, Unit } = require('../models');
+const { Op } = require('sequelize');
 const { requireAuth, requirePasswordChanged, requireSuperAdmin } = require('../middleware/auth');
 const moment   = require('moment');
 
@@ -45,6 +46,9 @@ router.get('/:id/staff', async (req, res) => {
     ],
     order: [['last_name', 'ASC']]
   });
+
+  // Auto-hide Fixed staff whose contract ended 90+ days ago
+  staff = staff.filter(m => !Staff.shouldAutoHide(m.contractEndDate, m.contractStatus));
 
   // Client-side filters
   if (search) {
@@ -130,7 +134,7 @@ router.get('/:id/print', async (req, res) => {
   const location = await Location.findByPk(req.params.id);
   if (!location) return res.redirect('/locations');
 
-  const staff = await Staff.findAll({
+  let staff = await Staff.findAll({
     where: { locationId: location.id },
     include: [
       { model: Department,    as: 'department' },
@@ -139,6 +143,9 @@ router.get('/:id/print', async (req, res) => {
     ],
     order: [['last_name', 'ASC']]
   });
+
+  // Exclude auto-hidden staff from print too
+  staff = staff.filter(m => !Staff.shouldAutoHide(m.contractEndDate, m.contractStatus));
 
   res.render('locations/print', { location, staff, moment });
 });

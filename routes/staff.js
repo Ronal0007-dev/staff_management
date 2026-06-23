@@ -22,13 +22,13 @@ function calcContractEndDate(startDate, months) {
 
 // List all staff
 router.get('/', async (req, res) => {
-  const { search, dept, location, deleted } = req.query;
+  const { search, dept, deleted } = req.query;
   const where = {};
   if (deleted === 'true') where.deletedAt = { [require('sequelize').Op.ne]: null };
 
   const include = [
-    { model: Location,      as: 'location' },
-    { model: Department,    as: 'department' },
+    { model: Location,   as: 'location' },
+    { model: Department, as: 'department', include: [{ model: Location, as: 'location' }] },
     { model: SubDepartment, as: 'subDepartment' },
     { model: Unit,          as: 'unit' }
   ];
@@ -39,6 +39,12 @@ router.get('/', async (req, res) => {
     paranoid: deleted !== 'true',
     order: [['createdAt', 'DESC']]
   });
+
+  // Auto-hide Fixed staff whose contract ended 90+ days ago
+  // (unless admin is explicitly viewing deleted/archived records)
+  if (deleted !== 'true') {
+    staff = staff.filter(m => !Staff.shouldAutoHide(m.contractEndDate, m.contractStatus));
+  }
 
   if (search) {
     const s = search.toLowerCase();
@@ -51,15 +57,8 @@ router.get('/', async (req, res) => {
   if (dept) {
     staff = staff.filter(m => m.department && m.department.slug === dept);
   }
-  if (location) {
-    const locId = parseInt(location, 10);
-    if (!Number.isNaN(locId)) {
-      staff = staff.filter(m => m.location && m.location.id === locId);
-    }
-  }
 
   const departments = await Department.findAll({ order: [['name', 'ASC']] });
-  const locations = await Location.findAll({ where: { isActive: true }, order: [['name', 'ASC']] });
 
   // Find fixed-contract staff expiring within 3 months
   const today     = new Date();
@@ -78,10 +77,8 @@ router.get('/', async (req, res) => {
   res.render('staff/index', {
     staff,
     departments,
-    locations,
     search: search || '',
     selectedDept: dept || '',
-    selectedLocation: location || '',
     showDeleted: deleted === 'true',
     expiringContracts,
     moment
@@ -210,13 +207,18 @@ router.post('/:id/restore', async (req, res) => {
 router.get('/:id/view', async (req, res) => {
   const staff = await Staff.findByPk(req.params.id, {
     include: [
-      { model: Location, as: 'location' },
-      { model: Department, as: 'department' },
+      { model: Location,   as: 'location' },
+      { model: Department, as: 'department', include: [{ model: Location, as: 'location' }] },
       { model: SubDepartment, as: 'subDepartment' },
-      { model: Unit, as: 'unit' }
+      { model: Unit,          as: 'unit' }
     ]
   });
   if (!staff) return res.status(404).json({ error: 'Not found' });
+
+  // Derive location: from staff.location directly, or fall back to department's location
+  const resolvedLocation = staff.location
+    ? staff.location
+    : (staff.department && staff.department.location ? staff.department.location : null);
 
   res.json({
     id:               staff.id,
@@ -233,7 +235,7 @@ router.get('/:id/view', async (req, res) => {
     contractStartDate:  staff.contractStartDate,
     contractEndDate:    staff.contractEndDate,
     educationLevel:     staff.educationLevel,
-    location:      staff.location      ? { id: staff.location.id, name: staff.location.name } : null,
+    location:      resolvedLocation ? { id: resolvedLocation.id, name: resolvedLocation.name } : null,
     department:    staff.department    ? { name: staff.department.name }    : null,
     subDepartment: staff.subDepartment ? { name: staff.subDepartment.name } : null,
     unit:          staff.unit          ? { name: staff.unit.name }          : null,
@@ -244,10 +246,10 @@ router.get('/:id/view', async (req, res) => {
 router.get('/:id/print', async (req, res) => {
   const staff = await Staff.findByPk(req.params.id, {
     include: [
-      { model: Location, as: 'location' },
-      { model: Department, as: 'department' },
+      { model: Location,   as: 'location' },
+      { model: Department, as: 'department', include: [{ model: Location, as: 'location' }] },
       { model: SubDepartment, as: 'subDepartment' },
-      { model: Unit, as: 'unit' }
+      { model: Unit,          as: 'unit' }
     ]
   });
   if (!staff) return res.redirect('/staff');
@@ -256,49 +258,63 @@ router.get('/:id/print', async (req, res) => {
 
 // Print list
 router.get('/print/list', async (req, res) => {
-  const { dept, location, search, deleted } = req.query;
-  const where = {};
-  if (deleted === 'true') where.deletedAt = { [Op.ne]: null };
-
+  const { dept } = req.query;
   let staff = await Staff.findAll({
-    where,
     include: [
-      { model: Location, as: 'location' },
-      { model: Department, as: 'department' },
+      { model: Location,   as: 'location' },
+      { model: Department, as: 'department', include: [{ model: Location, as: 'location' }] },
       { model: SubDepartment, as: 'subDepartment' },
-      { model: Unit, as: 'unit' }
+      { model: Unit,          as: 'unit' }
     ],
-    paranoid: deleted !== 'true',
     order: [['lastName', 'ASC']]
   });
-
-  if (search) {
-    const s = search.toLowerCase();
-    staff = staff.filter(m =>
-      m.firstName.toLowerCase().includes(s) ||
-      m.lastName.toLowerCase().includes(s) ||
-      (m.staffNumber && m.staffNumber.toLowerCase().includes(s))
-    );
-  }
   if (dept) staff = staff.filter(m => m.department && m.department.slug === dept);
-  if (location) {
-    const locId = parseInt(location, 10);
-    if (!Number.isNaN(locId)) staff = staff.filter(m => m.location && m.location.id === locId);
+  const departments = await Department.findAll();
+  const selectedDept = dept ? departments.find(d => d.slug === dept) : null;
+  res.render('staff/print-list', { staff, selectedDept, moment });
+});
+
+// ── POST /:id/contract-status — change contract status ───────
+router.post('/:id/contract-status', async (req, res) => {
+  const member = await Staff.findByPk(req.params.id);
+  if (!member) { req.flash('error', 'Staff not found.'); return res.redirect('/staff'); }
+
+  // Only Fixed contracts can have status changed
+  if (member.employmentType !== 'Fixed') {
+    req.flash('error', 'Contract status change only applies to Fixed employment type.');
+    return res.redirect('/staff');
   }
 
-  const departments = await Department.findAll();
-  const locations = await Location.findAll({ where: { isActive: true }, order: [['name', 'ASC']] });
-  const selectedDept = dept ? departments.find(d => d.slug === dept) : null;
-  const selectedLocation = location ? locations.find(l => l.id === parseInt(location, 10)) : null;
+  const days = Staff.daysSinceExpiry(member.contractEndDate);
 
-  res.render('staff/print-list', {
-    staff,
-    selectedDept,
-    selectedLocation,
-    search: search || '',
-    showDeleted: deleted === 'true',
-    moment
+  // Must be expired first
+  if (days === null || days <= 0) {
+    req.flash('error', 'Contract has not yet expired.');
+    return res.redirect('/staff');
+  }
+
+  // Window: 1–60 days after expiry
+  if (days > 60) {
+    req.flash('error', 'The 2-month window to change this contract status has passed.');
+    return res.redirect('/staff');
+  }
+
+  const { newStatus, note } = req.body;
+  if (!['renewed', 'terminated'].includes(newStatus)) {
+    req.flash('error', 'Invalid status. Choose Renewed or Terminated.');
+    return res.redirect('/staff');
+  }
+
+  await member.update({
+    contractStatus:          newStatus,
+    contractStatusChangedAt: new Date(),
+    contractStatusNote:      note || null
   });
+
+  req.flash('success', `Contract status for ${member.firstName} ${member.lastName} set to "${newStatus}".`);
+  // Redirect back to wherever they came from
+  const referer = req.get('Referer') || '/staff';
+  res.redirect(referer);
 });
 
 module.exports = router;
